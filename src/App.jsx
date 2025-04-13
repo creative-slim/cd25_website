@@ -1,11 +1,10 @@
 import { SceneCanvas } from "./components/SceneCanvas";
-import useSmoothScroll from "./utils/useSmoothScroll";
+import { useRef } from "react";
 
 export default function App() {
-  const { wrapperRef, containerRef } = useSmoothScroll({
-    easeSpeed: 0.07,
-    scrollSpeed: 0.6,
-  });
+  const containerRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+
   const sections = [
     { borderColor: "#ff0000" },
     { borderColor: "#00ff00" },
@@ -17,40 +16,46 @@ export default function App() {
     { borderColor: "#ffff00" },
   ];
   const containerHeight = sections.length * 100; // in vh units
-  // const containerHeight = sections.length * 100; // in vh units
+
   return (
     <div
-      ref={wrapperRef}
+      ref={containerRef}
       style={{
         height: "100vh",
-        overflow: "hidden",
+        // overflow: "hidden",
         width: "100vw",
         backgroundColor: "#f4e6d7",
+        position: "relative",
       }}
     >
       <div
         style={{
-          position: "absolute",
+          position: "fixed",
           top: 0,
           left: 0,
           width: "100vw",
           height: "100vh",
         }}
       >
-        <SceneCanvas />
+        <SceneCanvas scrollContainerRef={scrollContainerRef} />
       </div>
       <div
         id="scroll-container"
-        ref={containerRef}
+        ref={scrollContainerRef}
         style={{
-          height: `${containerHeight}vh`, // Uncomment and fix this line
-          position: "relative", // Add this to ensure proper height calculation
+          height: `${containerHeight}vh`,
+          position: "relative",
+          overflowY: "auto",
+          width: "100%",
+          scrollBehavior: "smooth", // Native smooth scrolling
         }}
       >
         {sections.map((section, index) => (
           <section
+            id={`section-${index}`}
             key={index}
             style={{
+              pointerEvents: "none",
               height: "100vh",
               width: "100vw",
               position: "relative",

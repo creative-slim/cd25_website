@@ -7,7 +7,7 @@ Files: ./public/Kreaton_2.glb [10.83MB] > /Users/slim-cd/Documents/_Projects/__C
 import { useGraph } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
-import { playAnimationTransition } from "../utils/animationUtils";
+import { playAnimationTransition } from "../../utils/animationUtils";
 import { forwardRef } from "react";
 import { useImperativeHandle, useRef, useMemo, useEffect } from "react";
 import { NodeToyMaterial, NodeToyTick } from "@nodetoy/react-nodetoy";

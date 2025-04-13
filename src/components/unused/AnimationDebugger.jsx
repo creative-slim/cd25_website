@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getCurrentAnimations } from "../utils/animationUtils";
+import { getCurrentAnimations } from "../../utils/animationUtils";
 
 export function AnimationDebugger({ kreatonRef }) {
   const [animations, setAnimations] = useState([]);

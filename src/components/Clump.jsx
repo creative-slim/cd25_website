@@ -14,9 +14,10 @@ import {
 const rfs = THREE.MathUtils.randFloatSpread;
 
 const NUM_INSTANCES = 500;
-const INSTANCES_INITIAL_DISTACE = 2500;
+const INSTANCES_INITIAL_DISTACE = 1000;
+const INSTANCE_SIZE = 0.5;
 
-const sphereGeometry = new THREE.DodecahedronGeometry(0.3, 0);
+const sphereGeometry = new THREE.DodecahedronGeometry(INSTANCE_SIZE, 0);
 const baubleMaterial = new THREE.MeshStandardMaterial({
   color: "black",
   roughness: 1,
@@ -55,7 +56,7 @@ export const Clump = forwardRef(
     ref
   ) => {
     const [sphereRef, sphereApi] = useSphere(() => ({
-      args: [0.4],
+      args: [0.8],
       mass: 0.5,
       angularDamping: 0.1,
       linearDamping: 0.8,
@@ -268,7 +269,7 @@ export function Pointer() {
   const viewport = useThree((state) => state.viewport);
   const [ref, api] = useSphere(() => ({
     type: "Kinematic",
-    args: [3],
+    args: [10],
     position: [0, 0, 0],
   }));
   useFrame((state) =>

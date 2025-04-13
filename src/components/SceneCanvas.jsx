@@ -1,33 +1,24 @@
 import { Canvas } from "@react-three/fiber";
-import {
-  ScrollControls,
-  Scroll,
-  OrbitControls,
-  Environment,
-  Stars,
-} from "@react-three/drei";
+import { OrbitControls, Environment, Stars } from "@react-three/drei";
 import { NodeToyTick } from "@nodetoy/react-nodetoy";
-import { Earth2 } from "./Earthv4_UV";
-import { Sniker } from "./Seen_low_2K";
 import { Suspense } from "react";
-import { Armchair } from "./Armchair";
-// import { Kreaton } from "./Kreaton_2";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
-import { Kreaton } from "./Kreaton_A";
-import {
-  Bloom,
-  DepthOfField,
-  EffectComposer,
-  Noise,
-  Vignette,
-} from "@react-three/postprocessing";
+// import {
+//   Bloom,
+//   DepthOfField,
+//   EffectComposer,
+//   Noise,
+//   Vignette,
+// } from "@react-three/postprocessing";
 import { Physics } from "@react-three/cannon";
 import * as THREE from "three";
 import { Rotator } from "./Carosel";
 import { Clump } from "./Clump";
+import { Kreaton } from "./Kreaton_A";
+import { Earth2 } from "./Earthv4_UV";
 
-export function SceneCanvas() {
+export function SceneCanvas({ scrollContainerRef }) {
   const kreatonRef = useRef();
   const earthRef = useRef();
   const rotatorRef = useRef();
@@ -59,34 +50,28 @@ export function SceneCanvas() {
       {/* <directionalLight position={[10, 10, -5]} intensity={1} /> */}
       <Suspense fallback={null}>
         <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
-        {/* <Armchair position={[0, -1.5, 0]} /> */}
-        {/* <Model /> */}
 
         <Kreaton ref={kreatonRef} position={[0, 0, 0]} />
-
         <Rotator ref={rotatorRef} position={[0, -10, 0]} />
-
         {/* Add Clump component */}
         <Physics>
           <Clump
             ref={clumpRef}
             position={[0, 0, 0]}
             shieldColor="blue"
-            shieldRadius={3}
+            shieldRadius={7}
           />
         </Physics>
-        {/* <Sniker position={[4, 0, 0]} /> */}
       </Suspense>
-      <OrbitControls />
+      {/* <OrbitControls /> */}
       <NodeToyTick />
-
       <AnimationManager
         kreatonRef={kreatonRef}
         earthRef={earthRef}
         rotatorRef={rotatorRef}
         clumpRef={clumpRef} // Pass the ref to AnimationManager
+        scrollContainerRef={scrollContainerRef}
       />
-
       {/* <EffectComposer>
         <DepthOfField
           focusDistance={0}
