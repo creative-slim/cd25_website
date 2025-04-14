@@ -43,6 +43,8 @@ export default function App() {
         ref={scrollContainerRef}
         style={{
           height: `${containerHeight}vh`,
+          pointerEvents: "none",
+
           position: "relative",
           overflowY: "auto",
           width: "100%",

@@ -17,6 +17,7 @@ import { Rotator } from "./Carosel";
 import { Clump } from "./Clump";
 import { Kreaton } from "./Kreaton_A";
 import { Earth2 } from "./Earthv4_UV";
+import { PointingFinger } from "./PointingFinger"; // Import PointingFinger
 
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "/artist_workshop_4k.hdr";
@@ -31,6 +32,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   const earthRef = useRef();
   const rotatorRef = useRef();
   const clumpRef = useRef(); // Add ref for Clump
+  const pointingFingerRef = useRef(); // Add ref for PointingFinger
 
   return (
     <Canvas
@@ -44,13 +46,14 @@ export function SceneCanvas({ scrollContainerRef }) {
       // linear
       gl={{ alpha: true, antialias: true, background: false }}
       camera={{
-        type: "OrthographicCamera",
-        fov: 45,
+        fov: 55,
         near: 0.1,
         far: 1000,
         position: [0, 0.5, 4],
       }}
     >
+      {/* <OrbitControls /> */}
+
       <Environment files={modelUrl} />
       {/* <color attach="background" args={["black"]} /> */}
       {/* <Stars saturation={0} count={400} speed={0.5} /> */}
@@ -61,6 +64,13 @@ export function SceneCanvas({ scrollContainerRef }) {
 
         <Kreaton ref={kreatonRef} position={[0, 0, 0]} />
         <Rotator ref={rotatorRef} position={[0, -10, 0]} />
+        {/* Add PointingFinger component, initially hidden or positioned off-screen */}
+        <PointingFinger
+          ref={pointingFingerRef}
+          position={[-0.2, -0.7, 2.4]}
+          rotation={[0, 0, 0]}
+          visible={true}
+        />
         {/* Add Clump component */}
         <Physics>
           <Clump
@@ -71,13 +81,13 @@ export function SceneCanvas({ scrollContainerRef }) {
           />
         </Physics>
       </Suspense>
-      {/* <OrbitControls /> */}
       <NodeToyTick />
       <AnimationManager
         kreatonRef={kreatonRef}
         earthRef={earthRef}
         rotatorRef={rotatorRef}
         clumpRef={clumpRef} // Pass the ref to AnimationManager
+        pointingFingerRef={pointingFingerRef} // Pass the PointingFinger ref
         scrollContainerRef={scrollContainerRef}
       />
       {/* <EffectComposer>

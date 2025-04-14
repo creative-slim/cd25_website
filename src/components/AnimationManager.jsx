@@ -56,6 +56,7 @@ export function AnimationManager({
   earthRef,
   rotatorRef,
   clumpRef,
+  pointingFingerRef, // Accept pointingFingerRef
   scrollContainerRef,
 }) {
   const { camera } = useThree();
@@ -351,7 +352,13 @@ export function AnimationManager({
 
   // Setup animation timeline with ScrollTrigger
   useEffect(() => {
-    if (!modelReady || !scrollContainerRef.current) return;
+    // Add pointingFingerRef.current to the dependency check
+    if (
+      !modelReady ||
+      !scrollContainerRef.current ||
+      !pointingFingerRef.current
+    )
+      return;
 
     cleanupTimeline();
 
@@ -494,6 +501,8 @@ export function AnimationManager({
     */
     createSectionTimeline("section-2", {
       onEnter: () => {
+        setFOV(110);
+
         // Create and play camera sequence immediately
         const cameraSequence = gsap.timeline();
         cameraSequence
@@ -1027,7 +1036,12 @@ export function AnimationManager({
     // setIsInitialized(true);
 
     // return () => cleanupTimeline();
-  }, [camera, modelReady, scrollContainerRef.current]);
+  }, [
+    camera,
+    modelReady,
+    scrollContainerRef.current,
+    pointingFingerRef.current,
+  ]);
 
   return (
     <>
