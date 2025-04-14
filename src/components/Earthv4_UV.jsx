@@ -18,7 +18,7 @@ import { forwardRef, useImperativeHandle } from "react";
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "src/models/earth_final-transformed.glb";
 const remoteModelUrl =
-  "http://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb"; // Corrected remote URL if needed
+  "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb"; // Corrected remote URL if needed
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
 console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
