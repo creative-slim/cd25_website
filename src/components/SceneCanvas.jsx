@@ -42,7 +42,7 @@ export function SceneCanvas({ scrollContainerRef }) {
       }}
       // flat
       // linear
-      gl={{ alpha: true, antialias: true }}
+      gl={{ alpha: true, antialias: true, background: false }}
       camera={{
         type: "OrthographicCamera",
         fov: 45,

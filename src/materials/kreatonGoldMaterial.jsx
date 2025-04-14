@@ -13,22 +13,23 @@ export const kreatonGoldMaterial = new MeshPhysicalMaterial({
   roughness: 0.2,
   metalness: 1,
   reflectivity: 0.5,
-  //emissive: kreatonGoldColor,
-  // emissiveIntensity: 1,
+  // iridescence: 0.5,
+  // emissive: kreatonGoldColor,
+  // emissiveIntensity: 0.2,
   // ior: 1.5,
   // sheenRoughness: 1,
 });
 
 // React component version for JSX contexts
-export function KreatonGoldMaterial(props) {
-  return (
-    <meshPhysicalMaterial
-      // color={kreatonGoldColor}
-      // roughness={0.3}
-      // metalness={1}
-      // reflectivity={0.5}
-      // emissiveIntensity={1}
-      {...props}
-    />
-  );
-}
+// export default function KreatonGoldMaterial(props) {
+//   return (
+//     <meshPhysicalMaterial
+//       color={kreatonGoldColor}
+//       roughness={0.3}
+//       metalness={1}
+//       reflectivity={0.5}
+//       // emissiveIntensity={1}
+//       // {...props}
+//     />
+//   );
+// }

@@ -172,6 +172,49 @@ export function AnimationManager({
     });
   };
 
+  // Function to smoothly change camera FOV
+  const setFOV = (fov, options = {}) => {
+    const {
+      duration = 1,
+      ease = "power2.inOut",
+      onStart,
+      onComplete,
+    } = options;
+
+    // Kill any existing tweens targeting the camera FOV to prevent conflicts
+    gsap.killTweensOf(camera, "fov");
+
+    logRef.current(
+      "system",
+      `Setting camera FOV from ${camera.fov.toFixed(
+        1
+      )} to ${fov} using GSAP tween`
+    );
+
+    gsap.to(camera, {
+      fov,
+      duration,
+      ease,
+      onStart: () => {
+        logRef.current("animation", "Starting camera FOV animation");
+        if (onStart) onStart();
+      },
+      onUpdate: () => {
+        // IMPORTANT: Update projection matrix on each frame of the tween
+        camera.updateProjectionMatrix();
+      },
+      onComplete: () => {
+        // Ensure final FOV is set and matrix updated
+        camera.updateProjectionMatrix();
+        if (onComplete) onComplete();
+        logRef.current(
+          "system",
+          `Camera FOV animation complete: ${camera.fov.toFixed(1)}`
+        );
+      },
+    });
+  };
+
   // Helper function to create ScrollTrigger sections
   //? checked
   const createSectionTimeline = (sectionId, options = {}) => {

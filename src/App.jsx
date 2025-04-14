@@ -24,7 +24,6 @@ export default function App() {
         height: "100vh",
         // overflow: "hidden",
         width: "100vw",
-        backgroundColor: "#f4e6d7",
         position: "relative",
       }}
     >
