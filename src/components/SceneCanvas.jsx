@@ -18,6 +18,14 @@ import { Clump } from "./Clump";
 import { Kreaton } from "./Kreaton_A";
 import { Earth2 } from "./Earthv4_UV";
 
+const isDevelopment = import.meta.env.DEV;
+const localModelUrl = "/artist_workshop_4k.hdr";
+const remoteModelUrl =
+  "https://files.creative-directors.com/creative-website/creative25/glbs/artist_workshop_4k.hdr"; // Corrected remote URL if needed
+const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
+console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
+// const modelUrl =
+
 export function SceneCanvas({ scrollContainerRef }) {
   const kreatonRef = useRef();
   const earthRef = useRef();
@@ -43,7 +51,7 @@ export function SceneCanvas({ scrollContainerRef }) {
         position: [0, 0.5, 4],
       }}
     >
-      <Environment files="/artist_workshop_4k.hdr" />
+      <Environment files={modelUrl} />
       {/* <color attach="background" args={["black"]} /> */}
       {/* <Stars saturation={0} count={400} speed={0.5} /> */}
       <ambientLight intensity={0.3} />
