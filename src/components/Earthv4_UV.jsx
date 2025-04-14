@@ -14,8 +14,17 @@ import { data as waterfallData } from "../shaders/waterfallShader";
 import { Suspense } from "react";
 import { forwardRef, useImperativeHandle } from "react";
 
+// Determine the model URL based on the environment
+const isDevelopment = import.meta.env.DEV;
+const localModelUrl = "src/models/earth_final-transformed.glb";
+const remoteModelUrl =
+  "http://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb"; // Corrected remote URL if needed
+const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
+
+console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
+
 export const Earth2 = forwardRef((props, ref) => {
-  const { nodes, materials } = useGLTF("src/models/earthv4_UV-transformed.glb");
+  const { nodes, materials } = useGLTF(modelUrl);
   return (
     <group ref={ref} {...props} dispose={null}>
       <mesh rotation={[-0.1, 0.9, -1.0]} scale={1.85}>
@@ -35,4 +44,4 @@ export const Earth2 = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload("src/models/earthv4_UV-transformed.glb");
+useGLTF.preload(modelUrl);

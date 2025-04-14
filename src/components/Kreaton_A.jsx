@@ -7,6 +7,7 @@ Files: ./public/Kreaton_A.glb [10.88MB] > /Users/slim-cd/Documents/_Projects/__C
 import { useFrame, useGraph } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
+import { LoopOnce, LoopRepeat } from "three"; // Import LoopOnce and LoopRepeat
 import {
   playAnimationTransition,
   getCurrentAnimations,
@@ -20,11 +21,21 @@ import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
 import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
 
+// Determine the model URL based on the environment
+const isDevelopment = import.meta.env.DEV;
+const localModelUrl = "src/models/Kreaton_final-transformed.glb";
+const remoteModelUrl =
+  "http://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb"; // Corrected remote URL if needed
+const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
+
+console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
+
 export const Kreaton = forwardRef((props, ref) => {
+  // Remove local/remote definitions here as they are now outside the component
+
   const internalRef = useRef();
-  const { scene, animations } = useGLTF(
-    "src/models/KreatonUV3-transformed.glb"
-  );
+  // Use the determined modelUrl
+  const { scene, animations } = useGLTF(modelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes, materials } = useGraph(clone);
 
@@ -35,7 +46,7 @@ export const Kreaton = forwardRef((props, ref) => {
   materials.gold = kreatonGoldMaterial;
   materials.white = kreatonArmorMaterial;
 
-  const { actions } = useAnimations(animations, internalRef);
+  const { actions, mixer } = useAnimations(animations, internalRef); // Get mixer
 
   // Define what to expose to parent components through the ref
   useImperativeHandle(ref, () => {
@@ -67,7 +78,11 @@ export const Kreaton = forwardRef((props, ref) => {
       stopAnimation: (name, options = {}) => {
         const action = actions[name];
         if (action) {
+          // Ensure the action stops gracefully before fading out
+          action.stop(); // Add this line to stop the animation immediately
           action.fadeOut(options.fadeOut || 0.5);
+          // Optionally reset after fade out completes if needed, though fadeOut usually handles this
+          // setTimeout(() => action.reset(), (options.fadeOut || 0.5) * 1000);
           return true;
         }
         return false;
@@ -89,6 +104,8 @@ export const Kreaton = forwardRef((props, ref) => {
       transitionFromCurrentToAnimation: (toName, options = {}) => {
         // Use our own getCurrentAnimation method instead of the external function
         const currentAnimationName = instance.getCurrentAnimation();
+        const loopOnce = options.loopOnce || false; // Get loopOnce option
+        const onComplete = options.onComplete; // Get onComplete callback
 
         // Still log details for debugging purposes
         console.log("Animation detection debug:");
@@ -104,11 +121,34 @@ export const Kreaton = forwardRef((props, ref) => {
             .map(([name]) => `${name} (${actions[name].weight.toFixed(2)})`)
         );
 
-        // If current animation is the same as target, do nothing
-        if (currentAnimationName === toName) {
-          console.log(
-            `Already playing "${toName}" animation - no transition needed`
-          );
+        // If current animation is the same as target, do nothing (unless forcing restart or loop change)
+        if (currentAnimationName === toName && !options.forceRestart) {
+          const action = actions[toName];
+          // Check if loop mode needs updating
+          if (action && loopOnce && action.loop !== LoopOnce) {
+            console.log(`Updating loop mode for "${toName}" to LoopOnce.`);
+            action.setLoop(LoopOnce, 1);
+            action.clampWhenFinished = true;
+            // Add listener if onComplete is provided
+            if (onComplete) {
+              const listener = (event) => {
+                if (event.action === action) {
+                  console.log(`LoopOnce animation "${toName}" completed.`);
+                  onComplete();
+                  mixer.removeEventListener("finished", listener);
+                }
+              };
+              mixer.addEventListener("finished", listener);
+            }
+          } else if (action && !loopOnce && action.loop !== LoopRepeat) {
+            console.log(`Updating loop mode for "${toName}" to LoopRepeat.`);
+            action.setLoop(LoopRepeat);
+            action.clampWhenFinished = false;
+          } else {
+            console.log(
+              `Already playing "${toName}" animation - no transition needed`
+            );
+          }
           return true;
         }
 
@@ -123,10 +163,30 @@ export const Kreaton = forwardRef((props, ref) => {
           if (action) {
             action.enabled = true;
             action.weight = 1;
-            action
-              .reset()
-              .fadeIn(options.fadeIn || 0.5)
-              .play();
+            action.reset();
+            if (loopOnce) {
+              action.setLoop(LoopOnce, 1);
+              action.clampWhenFinished = true;
+              console.log(`Playing "${toName}" once.`);
+              // Add listener if onComplete is provided
+              if (onComplete) {
+                const listener = (event) => {
+                  if (event.action === action) {
+                    console.log(`LoopOnce animation "${toName}" completed.`);
+                    onComplete();
+                    mixer.removeEventListener("finished", listener);
+                  }
+                };
+                // Remove previous listeners for safety before adding new one
+                mixer.removeEventListener("finished", listener);
+                mixer.addEventListener("finished", listener);
+              }
+            } else {
+              action.setLoop(LoopRepeat); // Ensure it loops normally if not loopOnce
+              action.clampWhenFinished = false;
+              console.log(`Playing "${toName}" on loop.`);
+            }
+            action.fadeIn(options.fadeInDuration || 0.2).play(); // Use fadeInDuration
             return true;
           }
           console.warn(`Animation "${toName}" not found`);
@@ -152,12 +212,36 @@ export const Kreaton = forwardRef((props, ref) => {
           toAction.enabled = true;
           toAction.weight = 1;
           toAction.reset();
-          toAction.fadeIn(options.fadeInDuration || 0.2);
+          if (loopOnce) {
+            toAction.setLoop(LoopOnce, 1);
+            toAction.clampWhenFinished = true;
+            console.log(`Transitioning to "${toName}" once.`);
+            // Add listener if onComplete is provided
+            if (onComplete) {
+              const listener = (event) => {
+                if (event.action === toAction) {
+                  console.log(`LoopOnce animation "${toName}" completed.`);
+                  onComplete();
+                  mixer.removeEventListener("finished", listener);
+                }
+              };
+              // Remove previous listeners for safety before adding new one
+              mixer.removeEventListener("finished", listener);
+              mixer.addEventListener("finished", listener);
+            }
+          } else {
+            toAction.setLoop(LoopRepeat); // Ensure it loops normally if not loopOnce
+            toAction.clampWhenFinished = false;
+            console.log(`Transitioning to "${toName}" on loop.`);
+          }
+          toAction.fadeIn(options.fadeInDuration || 0.2); // Use fadeInDuration
           toAction.play();
           return true;
         }
 
-        console.warn(`Target animation "${toName}" not found`);
+        console.warn(
+          `Animation transition failed: Current="${currentAnimationName}", Target="${toName}"`
+        );
         return false;
       },
 
@@ -278,4 +362,5 @@ export const Kreaton = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload("src/models/KreatonUV3-transformed.glb");
+// Use the determined modelUrl for preloading
+useGLTF.preload(modelUrl);
