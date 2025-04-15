@@ -353,12 +353,7 @@ export function AnimationManager({
   // Setup animation timeline with ScrollTrigger
   useEffect(() => {
     // Add pointingFingerRef.current to the dependency check
-    if (
-      !modelReady ||
-      !scrollContainerRef.current ||
-      !pointingFingerRef.current
-    )
-      return;
+    if (!modelReady) return;
 
     cleanupTimeline();
 
