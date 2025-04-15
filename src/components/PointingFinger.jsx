@@ -6,10 +6,12 @@ Files: ./public/PointingFinger.glb [9.64MB] > /Users/slim-cd/Documents/_Projects
 
 import React, { useRef, forwardRef, useImperativeHandle } from "react";
 import { useGLTF } from "@react-three/drei";
-
+import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
+import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
+import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
 // Determine the model URL based on the environment
 const isDevelopment = import.meta.env.DEV;
-const localModelUrl = "src/models/PointingFinger-transformed.glb";
+const localModelUrl = "src/models/fingerFixed-transformed.glb";
 const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/PointingFinger-transformed.glb"; // Corrected remote URL if needed
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
@@ -17,19 +19,23 @@ const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 export const PointingFinger = forwardRef((props, ref) => {
   const internalRef = useRef();
   const { nodes, materials } = useGLTF(modelUrl);
+  const skinMaterial = new NodeToyMaterial({
+    url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
+  });
+  materials.Skin = skinMaterial;
+  materials.gold = kreatonGoldMaterial;
+  materials.white = kreatonArmorMaterial;
 
   // Expose the internal ref to the parent component
   useImperativeHandle(ref, () => internalRef.current);
 
   return (
-    <group ref={internalRef} {...props} dispose={null}>
+    <group {...props} dispose={null}>
       <group position={[0.138, 1.32, -0.31]} rotation={[0.304, 0.042, -1.15]}>
         <mesh geometry={nodes.Armsmesh.geometry} material={materials.white} />
         <mesh geometry={nodes.Armsmesh_1.geometry} material={materials.gold} />
-        <mesh
-          geometry={nodes.Armsmesh_2.geometry}
-          material={materials["Special Metallic Car Paint"]}
-        />
+        <mesh geometry={nodes.Armsmesh_2.geometry} material={skinMaterial} />
+        <mesh geometry={nodes.Armsmesh_3.geometry} material={skinMaterial} />
       </group>
     </group>
   );

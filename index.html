@@ -16,15 +16,34 @@
     </style>
   </head>
   <body style="margin: 0; background: #f4e6d7">
-    <div
-      id="index-root-threed"
-      style="
-        height: 100vh;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      "
-    ></div>
+    <div style="position: relative">
+      <div
+        id="index-root-threed"
+        style="height: 100vh; position: fixed; width: 100vw; left: 0; top: 0"
+      ></div>
+      <div data-scroll-container>
+        <div
+          id="section-0"
+          style="height: 100vh; background-color: aquamarine"
+        ></div>
+        <div
+          id="section-1"
+          style="height: 100vh; background-color: lightcoral"
+        ></div>
+        <div
+          id="section-2"
+          style="height: 100vh; background-color: lightblue"
+        ></div>
+        <div
+          id="section-3"
+          style="height: 100vh; background-color: lightgreen"
+        ></div>
+        <div
+          id="section-4"
+          style="height: 100vh; background-color: lightyellow"
+        ></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
