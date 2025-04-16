@@ -177,6 +177,49 @@ export function AnimationManager({
     });
   };
 
+  // New function to consistently handle camera position animations
+  const setCameraPosition = (position, options = {}) => {
+    const {
+      duration = 1,
+      ease = "power2.inOut",
+      onStart,
+      onComplete,
+    } = options;
+
+    // Kill any existing tweens targeting the camera position to prevent conflicts
+    gsap.killTweensOf(camera.position);
+
+    logRef.current(
+      "system",
+      `Setting camera position from [${camera.position.x.toFixed(
+        2
+      )}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(
+        2
+      )}] to [${position.x}, ${position.y}, ${position.z}] using GSAP tween`
+    );
+
+    gsap.to(camera.position, {
+      x: position.x,
+      y: position.y,
+      z: position.z,
+      duration,
+      ease,
+      onStart: () => {
+        logRef.current("animation", "Starting camera position animation");
+        if (onStart) onStart();
+      },
+      onComplete: () => {
+        if (onComplete) onComplete();
+        logRef.current(
+          "system",
+          `Camera position animation complete: [${camera.position.x.toFixed(
+            2
+          )}, ${camera.position.y.toFixed(2)}, ${camera.position.z.toFixed(2)}]`
+        );
+      },
+    });
+  };
+
   // Function to smoothly change camera FOV
   const setFOV = (fov, options = {}) => {
     const {
@@ -435,13 +478,10 @@ export function AnimationManager({
           { duration: 1, ease: "sine.inOut" }
         );
         // Ensure camera position matches end of Section 0 animation
-        gsap.to(camera.position, {
-          z: 4,
-          y: 0.5,
-          x: 0,
-          duration: 1,
-          ease: "sine.inOut",
-        });
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "sine.inOut" }
+        );
       },
       onUpdate: (self) => {
         logRef.current(
@@ -512,17 +552,13 @@ export function AnimationManager({
 
     function rotatorCameraSetup(bottomUp = false) {
       // Create and play camera sequence immediately
-      const cameraSequence = gsap.timeline();
-
       if (bottomUp) {
-        cameraSequence.to(camera.position, {
-          y: 1,
-          x: 0,
-          z: 2,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        setCameraPosition(
+          { x: 0, y: 1, z: 2 },
+          { duration: 1, ease: "power3.inOut" }
+        );
       } else {
+        const cameraSequence = gsap.timeline();
         cameraSequence
           .to(camera.position, {
             x: 2,
@@ -534,8 +570,8 @@ export function AnimationManager({
             duration: 0.5,
             ease: "power3.inOut",
           });
+        cameraSequence.play();
       }
-      cameraSequence.play();
       // Move camera target to focus on carousel
       setCameraTarget(
         { x: 0, y: 1, z: 5 },
@@ -587,8 +623,6 @@ export function AnimationManager({
         rotatorX(20);
         setFOV(DEFAULT_FOV);
 
-        // cameraSequence.play();
-
         // Reset camera target to original position
         setCameraTarget(
           { x: 0, y: 1, z: 0 },
@@ -630,13 +664,10 @@ export function AnimationManager({
         //   { duration: 1.0, ease: "power2.inOut" }
         // );
         // Revert camera position from Section 4's wide view back to Section 2's end position (approx 0, y, z)
-        // gsap.to(camera.position, {
-        //   z: 2.2,
-        //   y: 1.2,
-        //   x: 0,
-        //   duration: 1,
-        //   ease: "power3.inOut",
-        // });
+        // setCameraPosition(
+        //   { x: 0, y: 1.2, z: 2.2 },
+        //   { duration: 1, ease: "power3.inOut" }
+        // );
         // Revert animation state if needed (e.g., back to IDLE or SALUTE depending on Section 2 logic)
         // Assuming Section 2 ends with IDLE or SALUTE
         logRef.current(
@@ -674,16 +705,11 @@ export function AnimationManager({
     createSectionTimeline("section-4", {
       onEnter: () => {
         setFOV(DEFAULT_FOV);
-        // Kill existing camera position tweens before starting a new one
-        gsap.killTweensOf(camera.position);
         // Move camera to a wider view
-        gsap.to(camera.position, {
-          x: 10,
-          y: 10,
-          z: 10,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        setCameraPosition(
+          { x: 10, y: 10, z: 10 },
+          { duration: 1, ease: "power3.inOut" }
+        );
 
         // Reset camera target to focus on Kreaton
         setCameraTarget(
@@ -770,14 +796,10 @@ export function AnimationManager({
       onLeaveBack: () => {
         logRef.current("scrollTrigger", "Leaving Section 4 Backwards");
         // Revert camera position from Section 5 back to Section 4's wide view
-        gsap.killTweensOf(camera.position);
-        gsap.to(camera.position, {
-          x: 10,
-          y: 10,
-          z: 10,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        setCameraPosition(
+          { x: 10, y: 10, z: 10 },
+          { duration: 1, ease: "power3.inOut" }
+        );
         // Revert camera target from Section 5 back to Section 4's target
         setCameraTarget(
           { x: 0, y: 1.5, z: 0 },
@@ -814,16 +836,11 @@ export function AnimationManager({
     */
     createSectionTimeline("section-5", {
       onEnter: () => {
-        // Kill existing camera position tweens before starting a new one
-        gsap.killTweensOf(camera.position);
         // Move camera to a wider view
-        gsap.to(camera.position, {
-          x: 0,
-          y: 0.5,
-          z: 4,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "power3.inOut" }
+        );
 
         // Reset camera target to focus on Kreaton
         setCameraTarget(
@@ -836,14 +853,10 @@ export function AnimationManager({
       onLeaveBack: () => {
         logRef.current("scrollTrigger", "Leaving Section 5 Backwards");
         // Revert camera position from Section 6 back to Section 5's position
-        gsap.killTweensOf(camera.position);
-        gsap.to(camera.position, {
-          x: 0,
-          y: 0.5,
-          z: 4,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "power3.inOut" }
+        );
         // Revert camera target from Section 6 back to Section 5's target
         setCameraTarget(
           { x: 0, y: 1.5, z: 0 },
@@ -885,16 +898,11 @@ export function AnimationManager({
           "scrollTrigger",
           "Entering Section 6 - POINT/IDLE Cycle"
         );
-        // Kill existing camera position tweens before starting a new one
-        gsap.killTweensOf(camera.position);
         // Move camera to close-up position
-        gsap.to(camera.position, {
-          x: 1.5,
-          y: 1.5,
-          z: 5.5,
-          duration: 1,
-          ease: "power2.inOut",
-        });
+        setCameraPosition(
+          { x: 1.5, y: 1.5, z: 5.5 },
+          { duration: 1, ease: "power2.inOut" }
+        );
 
         // Set camera target
         setCameraTarget(
@@ -1009,13 +1017,10 @@ export function AnimationManager({
         }
 
         // Revert camera/target to Section 5 state
-        gsap.to(camera.position, {
-          x: 0,
-          y: 0.5,
-          z: 4,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "power3.inOut" }
+        );
         setCameraTarget(
           { x: 0, y: 1.5, z: 0 },
           { duration: 1, ease: "power2.inOut" }
@@ -1046,16 +1051,12 @@ export function AnimationManager({
         // This involves restarting the POINT/IDLE cycle, which is handled by Section 6 onEnterBack -> onEnter.
         // We just need to ensure camera/target/rotator match Section 6's onEnter state.
 
-        gsap.killTweensOf(camera.position);
-        gsap.to(camera.position, {
-          x: 1.5, // Match Section 6 onEnter
-          y: 1.5,
-          z: 5.5,
-          duration: 1,
-          ease: "power2.inOut",
-        });
+        setCameraPosition(
+          { x: 1.5, y: 1.5, z: 5.5 },
+          { duration: 1, ease: "power2.inOut" }
+        );
         setCameraTarget(
-          { x: -1.5, y: 1.5, z: 0 }, // Match Section 6 onEnter
+          { x: -1.5, y: 1.5, z: 0 },
           { duration: 1, ease: "power2.inOut" }
         );
         // Rotator state in Section 6 is not explicitly set onEnter, assuming it remains 20 from Section 5?
