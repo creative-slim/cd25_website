@@ -278,7 +278,7 @@ function Card({ url, onHoverStart, onHoverEnd, ...props }) {
       onPointerOut={pointerOut}
       {...props}
     >
-      <bentPlaneGeometry args={[0.1, 1.5, 1.5, 20, 20]} />
+      <bentPlaneGeometry args={[0.1, 1.618, 1, 20, 20]} />
     </Image>
   );
 }

@@ -28,7 +28,7 @@ export const Earth2 = forwardRef((props, ref) => {
   return (
     <group ref={ref} {...props} dispose={null}>
       <mesh rotation={[-0.1, 0.9, -1.0]} scale={1.85}>
-        <sphereGeometry args={[1, 64, 64]} />
+        <sphereGeometry args={[1.023, 64, 64]} />
         <NodeToyMaterial url={"https://draft.nodetoy.co/qXIJYMXgUGxlmCsm"} />
         {/* <NodeToyMaterial data={data} /> */}
       </mesh>

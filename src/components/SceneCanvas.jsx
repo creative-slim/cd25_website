@@ -61,14 +61,14 @@ export function SceneCanvas({ scrollContainerRef }) {
       {/* <directionalLight position={[10, 10, -5]} intensity={1} /> */}
       <Suspense fallback={null}>
         <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
-        <Kreaton ref={kreatonRef} position={[0, 0, 0]} />
+        <Kreaton ref={kreatonRef} position={[0, 0.02, 0]} />
         <Rotator ref={rotatorRef} position={[0, -10, 0]} />
         {/* Add PointingFinger component, initially hidden or positioned off-screen */}
         <PointingFinger
           ref={pointingFingerRef}
           position={[-0.2, -0.7, 2.4]}
           rotation={[0, 0, 0]}
-          visible={true}
+          visible={false}
         />
         {/* Add Clump component */}
         <Physics>

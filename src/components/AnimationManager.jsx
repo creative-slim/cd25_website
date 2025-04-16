@@ -10,6 +10,10 @@ gsap.registerPlugin(ScrollTrigger);
 // Debug flag to control all console logs
 const DEBUG_LOGS = true;
 
+// FOV Constants
+const DEFAULT_FOV = 55;
+const WIDE_FOV = 70;
+
 // Enhanced logging with color coding
 const logStyles = {
   sequence: "color: #4287f5; font-weight: bold;",
@@ -257,7 +261,7 @@ export function AnimationManager({
           if (onEnterBack) onEnterBack();
         },
         onLeaveBack: () => {
-          logRef.current("scrollTrigger", `Left ${sectionId} backwards`);
+          logRef.current("scrollTrigger", `backwards-Left ${sectionId}`);
           if (onLeaveBack) onLeaveBack();
         },
         onUpdate: onUpdate ? (self) => onUpdate(self) : undefined,
@@ -445,6 +449,14 @@ export function AnimationManager({
           `Intro progress: ${self.progress.toFixed(2)}`
         );
       },
+      onEnterBack: () => {
+        // Reset camera target to original position
+        setCameraTarget(
+          { x: 0, y: 1.5, z: 0 },
+          { duration: 1, ease: "sine.inOut" }
+        );
+      },
+
       // Add the camera animation directly here
       animations: [
         {
@@ -489,17 +501,28 @@ export function AnimationManager({
           { duration: 1, ease: "sine.inOut" }
         );
       },
+      onEnterBack: () => {
+        // Reset camera target to original position
+        setCameraTarget(
+          { x: 0, y: 1.5, z: 0 },
+          { duration: 1, ease: "sine.inOut" }
+        );
+      },
     });
 
-    /*
-    Section 2 - Rotation Sequence
-    */
-    createSectionTimeline("section-2", {
-      onEnter: () => {
-        setFOV(110);
+    function rotatorCameraSetup(bottomUp = false) {
+      // Create and play camera sequence immediately
+      const cameraSequence = gsap.timeline();
 
-        // Create and play camera sequence immediately
-        const cameraSequence = gsap.timeline();
+      if (bottomUp) {
+        cameraSequence.to(camera.position, {
+          y: 1,
+          x: 0,
+          z: 2,
+          duration: 1,
+          ease: "power3.inOut",
+        });
+      } else {
         cameraSequence
           .to(camera.position, {
             x: 2,
@@ -511,19 +534,39 @@ export function AnimationManager({
             duration: 0.5,
             ease: "power3.inOut",
           });
+      }
+      cameraSequence.play();
+      // Move camera target to focus on carousel
+      setCameraTarget(
+        { x: 0, y: 1, z: 5 },
+        { duration: 1.0, ease: "power2.inOut" }
+      );
+
+      setFOV(WIDE_FOV);
+    }
+
+    // Make sure clump starts inactive until we reach farview
+    if (clumpRef.current) {
+      clumpRef.current.setActive(false);
+    }
+
+    /*
+    Section 2 - Rotation Sequence
+    */
+    createSectionTimeline("section-2", {
+      onEnter: () => {
         // Smooth transition from the circular path to carousel view
         logRef.current("scrollTrigger", "Transitioning to carousel view");
-
+        console.log("YOOOOOOOOOOo");
         rotatorX(1);
 
-        // Play immediately to ensure it runs
-        cameraSequence.play();
+        rotatorCameraSetup();
 
-        // Move camera target to focus on carousel
-        setCameraTarget(
-          { x: 0, y: 1, z: 5 },
-          { duration: 1.0, ease: "power2.inOut" }
-        );
+        if (clumpRef.current) {
+          logRef.current("animation", "Activating clump particles");
+          clumpRef.current.setActive(true);
+          clumpRef.current.toggleShield(true);
+        }
       },
       onLeaveBack: () => {
         // Create and play camera sequence immediately
@@ -542,6 +585,7 @@ export function AnimationManager({
         cameraSequence.play();
 
         rotatorX(20);
+        setFOV(DEFAULT_FOV);
 
         // cameraSequence.play();
 
@@ -560,24 +604,16 @@ export function AnimationManager({
         });
         stopEarthRotation(); // Ensure earth is stopped as in Section 1
       },
+      onEnterBack: () => {
+        // setFOV(55);
+      },
     });
-
-    // Make sure clump starts inactive until we reach farview
-    if (clumpRef.current) {
-      clumpRef.current.setActive(false);
-    }
 
     /*
     new Section 3 - Activating clump particles
     */
     createSectionTimeline("section-3", {
-      onEnter: () => {
-        if (clumpRef.current) {
-          logRef.current("animation", "Activating clump particles");
-          clumpRef.current.setActive(true);
-          clumpRef.current.toggleShield(true);
-        }
-      },
+      onEnter: () => {},
       onLeaveBack: () => {
         // Deactivate clump when scrolling back up through this section
         if (clumpRef.current && clumpRef.current.isActive) {
@@ -589,18 +625,18 @@ export function AnimationManager({
           clumpRef.current.toggleShield(false);
         }
         // Revert camera target from Section 4's wide view back to Section 2's carousel focus
-        setCameraTarget(
-          { x: 0, y: 1, z: 0 },
-          { duration: 1.0, ease: "power2.inOut" }
-        );
+        // setCameraTarget(
+        //   { x: 0, y: 1, z: 0 },
+        //   { duration: 1.0, ease: "power2.inOut" }
+        // );
         // Revert camera position from Section 4's wide view back to Section 2's end position (approx 0, y, z)
-        gsap.to(camera.position, {
-          z: 2.2,
-          y: 1.2,
-          x: 0,
-          duration: 1,
-          ease: "power3.inOut",
-        });
+        // gsap.to(camera.position, {
+        //   z: 2.2,
+        //   y: 1.2,
+        //   x: 0,
+        //   duration: 1,
+        //   ease: "power3.inOut",
+        // });
         // Revert animation state if needed (e.g., back to IDLE or SALUTE depending on Section 2 logic)
         // Assuming Section 2 ends with IDLE or SALUTE
         logRef.current(
@@ -614,6 +650,8 @@ export function AnimationManager({
         });
       },
       onLeave: () => {
+        // setFOV(DEFAULT_FOV);
+
         // Deactivate clump when leaving this section
         if (clumpRef.current && clumpRef.current.isActive) {
           clumpRef.current.setActive(false);
@@ -621,6 +659,7 @@ export function AnimationManager({
         }
       },
       onEnterBack: () => {
+        rotatorCameraSetup(true); // Move camera to bottom-up view
         // Re-activate clump when scrolling back up through this section
         if (clumpRef.current && !clumpRef.current.isActive) {
           clumpRef.current.setActive(false);
@@ -634,6 +673,7 @@ export function AnimationManager({
     */
     createSectionTimeline("section-4", {
       onEnter: () => {
+        setFOV(DEFAULT_FOV);
         // Kill existing camera position tweens before starting a new one
         gsap.killTweensOf(camera.position);
         // Move camera to a wider view

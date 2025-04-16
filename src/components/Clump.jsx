@@ -19,7 +19,7 @@ const INSTANCE_SIZE = 0.5;
 
 const sphereGeometry = new THREE.DodecahedronGeometry(INSTANCE_SIZE, 0);
 const baubleMaterial = new THREE.MeshStandardMaterial({
-  color: "black",
+  color: "gray",
   roughness: 1,
   envMapIntensity: 0.2,
 });
@@ -56,10 +56,11 @@ export const Clump = forwardRef(
     ref
   ) => {
     const [sphereRef, sphereApi] = useSphere(() => ({
-      args: [0.8],
+      args: [1],
       mass: 0.5,
-      angularDamping: 0.1,
-      linearDamping: 0.8,
+      angularDamping: 0.5,
+      linearDamping: 0.999,
+      gravity: [0, 0, 0], // Set gravity to zero
       position: [
         rfs(INSTANCES_INITIAL_DISTACE),
         rfs(INSTANCES_INITIAL_DISTACE),
