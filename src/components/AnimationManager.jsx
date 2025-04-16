@@ -276,7 +276,7 @@ export function AnimationManager({
       start = "top top",
       end = "bottom top",
       scrub = true,
-      markers = true, // Set to false in production
+      markers = false, // Set to false in production
       toggleActions = "play none none reverse",
       animations = [], // New parameter to accept animations
     } = options;
