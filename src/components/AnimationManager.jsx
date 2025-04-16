@@ -61,6 +61,7 @@ export function AnimationManager({
   rotatorRef,
   clumpRef,
   pointingFingerRef, // Accept pointingFingerRef
+  cdTextRef, // Accept cdTextRef
   scrollContainerRef,
 }) {
   const { camera } = useThree();
@@ -453,6 +454,8 @@ export function AnimationManager({
     Section 0 - Introduction/Walking
     */
     createSectionTimeline("section-0", {
+      end: "bottom 80%",
+
       onEnter: () => {
         logRef.current("model", "PLAYING ANIMATION current->WALKING");
         kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
@@ -495,22 +498,38 @@ export function AnimationManager({
           { x: 0, y: 1.5, z: 0 },
           { duration: 1, ease: "sine.inOut" }
         );
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "sine.inOut" }
+        );
+        if (cdTextRef.current) {
+          logRef.current("animation", "Playing CDtext intro animation");
+          cdTextRef.current.moveUp();
+          cdTextRef.current.show();
+        }
+      },
+      onLeave: () => {
+        if (cdTextRef.current) {
+          logRef.current("animation", "Playing CDtext intro animation");
+          cdTextRef.current.moveUp(10);
+          cdTextRef.current.hide();
+        }
       },
 
-      // Add the camera animation directly here
-      animations: [
-        {
-          target: camera.position,
-          vars: {
-            z: 2.2,
-            y: 1.2,
-            x: 0,
-            duration: 1,
-            ease: "sine.inOut",
-          },
-          position: 0, // Start at the beginning of the timeline
-        },
-      ],
+      // // Add the camera animation directly here
+      // animations: [
+      //   {
+      //     target: camera.position,
+      //     vars: {
+      //       z: 2.2,
+      //       y: 1.2,
+      //       x: 0,
+      //       duration: 1,
+      //       ease: "sine.inOut",
+      //     },
+      //     position: 0, // Start at the beginning of the timeline
+      //   },
+      // ],
     });
 
     /*
@@ -518,6 +537,12 @@ export function AnimationManager({
     */
     createSectionTimeline("section-1", {
       onEnter: () => {
+        // Add CDtext animation play
+
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "sine.inOut" }
+        );
         setCameraTarget(
           { x: 0, y: 1.5, z: 0 },
           { duration: 1, ease: "sine.inOut" }
@@ -547,6 +572,10 @@ export function AnimationManager({
           { x: 0, y: 1.5, z: 0 },
           { duration: 1, ease: "sine.inOut" }
         );
+        setCameraPosition(
+          { x: 0, y: 0.5, z: 4 },
+          { duration: 1, ease: "sine.inOut" }
+        );
       },
     });
 
@@ -562,11 +591,15 @@ export function AnimationManager({
         cameraSequence
           .to(camera.position, {
             x: 2,
+            y: 1.5,
+            z: 2,
             duration: 0.5,
             ease: "power3.inOut",
           })
           .to(camera.position, {
             x: 0,
+            y: 1.5,
+            z: 2,
             duration: 0.5,
             ease: "power3.inOut",
           });
@@ -603,6 +636,11 @@ export function AnimationManager({
           clumpRef.current.setActive(true);
           clumpRef.current.toggleShield(true);
         }
+
+        // Hide CDtext when entering this section
+        if (cdTextRef.current) {
+          cdTextRef.current.hide();
+        }
       },
       onLeaveBack: () => {
         // Create and play camera sequence immediately
@@ -637,6 +675,11 @@ export function AnimationManager({
           fadeInDuration: 0.3,
         });
         stopEarthRotation(); // Ensure earth is stopped as in Section 1
+
+        // Show CDtext when leaving this section backwards
+        // if (cdTextRef.current) {
+        //   cdTextRef.current.show();
+        // }
       },
       onEnterBack: () => {
         // setFOV(55);
@@ -647,7 +690,11 @@ export function AnimationManager({
     new Section 3 - Activating clump particles
     */
     createSectionTimeline("section-3", {
-      onEnter: () => {},
+      onEnter: () => {
+        if (cdTextRef.current) {
+          cdTextRef.current.hide();
+        }
+      },
       onLeaveBack: () => {
         // Deactivate clump when scrolling back up through this section
         if (clumpRef.current && clumpRef.current.isActive) {
@@ -1077,6 +1124,7 @@ export function AnimationManager({
     modelReady,
     scrollContainerRef.current,
     pointingFingerRef.current,
+    cdTextRef.current, // Add cdTextRef to dependency array
   ]);
 
   return (

@@ -18,6 +18,7 @@ import { Clump } from "./Clump";
 import { Kreaton } from "./Kreaton_A";
 import { Earth2 } from "./Earthv4_UV";
 import { PointingFinger } from "./PointingFinger"; // Import PointingFinger
+import { CDtext } from "./Site-headings";
 
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "/artist_workshop_4k.hdr";
@@ -33,6 +34,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   const rotatorRef = useRef();
   const clumpRef = useRef(); // Add ref for Clump
   const pointingFingerRef = useRef(); // Add ref for PointingFinger
+  const cdTextRef = useRef(); // Add ref for CDtext
 
   return (
     <Canvas
@@ -70,6 +72,14 @@ export function SceneCanvas({ scrollContainerRef }) {
           rotation={[0, 0, 0]}
           visible={false}
         />
+
+        <CDtext
+          ref={cdTextRef}
+          position={[0, 1, 0]}
+          scale={1}
+          rotation={[Math.PI / 2, 0, 0]}
+        />
+
         {/* Add Clump component */}
         <Physics>
           <Clump
@@ -87,6 +97,7 @@ export function SceneCanvas({ scrollContainerRef }) {
         rotatorRef={rotatorRef}
         clumpRef={clumpRef} // Pass the ref to AnimationManager
         pointingFingerRef={pointingFingerRef} // Pass the PointingFinger ref
+        cdTextRef={cdTextRef} // Pass the CDtext ref to AnimationManager
         scrollContainerRef={scrollContainerRef}
       />
       {/* <EffectComposer>
