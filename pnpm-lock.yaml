@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@gsap/react':
+        specifier: ^2.1.2
+        version: 2.1.2(gsap@3.12.7)(react@18.2.0)
       '@nodetoy/react-nodetoy':
         specifier: latest
         version: 0.1.24(@react-three/fiber@8.9.1(@types/react@18.3.20)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.146.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(three@0.146.0)
@@ -1067,6 +1070,12 @@ packages:
     peerDependencies:
       react: '>=16.8.0'
       react-dom: '>=16.8.0'
+
+  '@gsap/react@2.1.2':
+    resolution: {integrity: sha512-JqliybO1837UcgH2hVOM4VO+38APk3ECNrsuSM4MuXp+rbf+/2IG2K1YJiqfTcXQHH7XlA0m3ykniFYstfq0Iw==}
+    peerDependencies:
+      gsap: ^3.12.5
+      react: '>=17'
 
   '@humanwhocodes/config-array@0.13.0':
     resolution: {integrity: sha512-DZLEEqFWQFiyK6h5YIeynKx7JlvCYWL0cImfSRXZ9l4Sg2efkFGTuFf6vzXjK1cq6IYkU+Eg/JizXw+TD2vRNw==}
@@ -7277,6 +7286,11 @@ snapshots:
       use-isomorphic-layout-effect: 1.2.0(@types/react@18.3.20)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
+
+  '@gsap/react@2.1.2(gsap@3.12.7)(react@18.2.0)':
+    dependencies:
+      gsap: 3.12.7
+      react: 18.2.0
 
   '@humanwhocodes/config-array@0.13.0':
     dependencies:
