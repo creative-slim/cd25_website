@@ -60,11 +60,13 @@ export function SceneCanvas({ scrollContainerRef }) {
         <Environment files={modelUrl} />
         {/* <color attach="background" args={["black"]} /> */}
         {/* <Stars saturation={0} count={400} speed={0.5} /> */}
-        <ambientLight intensity={0.3} />
+        <ambientLight intensity={0.1} />
         {/* <directionalLight position={[10, 10, -5]} intensity={1} /> */}
         <Suspense fallback={null}>
           <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
-          <Kreaton ref={kreatonRef} position={[0, 0.02, 0]} />
+          {/* <Kreaton ref={kreatonRef} position={[0, 0.02, 0]} /> */}
+          <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
+
           <Rotator ref={rotatorRef} position={[0, -10, 0]} />
           {/* Add PointingFinger component, initially hidden or positioned off-screen */}
           <PointingFinger

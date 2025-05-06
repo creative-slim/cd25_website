@@ -17,9 +17,11 @@ import {
 import { forwardRef } from "react";
 import { useImperativeHandle, useRef, useMemo, useEffect } from "react";
 // import { NodeToyMaterial, NodeToyTick } from "@nodetoy/react-nodetoy";
-import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
+// import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
 import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
+import { TextureLoader, MeshStandardMaterial, RepeatWrapping } from "three";
+import { useLoader } from "@react-three/fiber";
 
 // Determine the model URL based on the environment
 const isDevelopment = import.meta.env.DEV;
@@ -39,8 +41,26 @@ export const Kreaton = forwardRef((props, ref) => {
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes, materials } = useGraph(clone);
 
-  const skinMaterial = new NodeToyMaterial({
-    url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
+  // const skinMaterial = new NodeToyMaterial({
+  //   url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
+  // });
+  // Load the texture
+  const skinTexture = useLoader(TextureLoader, "/seamless_skin.png");
+  // Configure texture wrapping for seamless animation
+  useEffect(() => {
+    if (skinTexture) {
+      skinTexture.wrapS = RepeatWrapping;
+      skinTexture.wrapT = RepeatWrapping;
+      skinTexture.needsUpdate = true; // Important: Signal Three.js to update the texture settings
+    }
+  }, [skinTexture]);
+
+  // Create a standard material with the texture
+  const skinMaterial = new MeshStandardMaterial({
+    map: skinTexture,
+    // You might want to adjust other material properties like roughness, metalness, etc.
+    // roughness: 0.7,
+    // metalness: 0.1,
   });
   materials.Skin = skinMaterial;
   materials.gold = kreatonGoldMaterial;
@@ -271,10 +291,20 @@ export const Kreaton = forwardRef((props, ref) => {
     // Animation setup code...
   }, [actions, animations, playAnimationTransition]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
     // Update the material properties or perform any other operations here
     // For example, you can update the skinMaterial properties if needed
-    NodeToyMaterial.tick();
+    // Check if skinMaterial and its map exist and if the texture has loaded
+    if (skinMaterial && skinMaterial.map && skinMaterial.map.image) {
+      // Slowly move the texture offset, e.g., vertically
+      // Use delta for frame-rate independent speed
+      skinMaterial.map.rotation += delta * 0.1; // Adjust 0.1 for desired rotation speed
+
+      // Optional: Wrap the offset value to keep it between 0 and 1 if WrapT is set to RepeatWrapping
+      // skinMaterial.map.offset.y %= 1;
+    }
+
+    // NodeToyMaterial.tick();
   });
 
   return (
