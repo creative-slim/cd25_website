@@ -29,6 +29,7 @@ const newVertexShader = `
   uniform float uNoiseSpeed;
 
   varying float vWaveHeight;
+  varying vec3 vObjectPosition; // To pass original position to fragment shader
 
   // Simplex 3D Noise 
   // by Ian McEwan, Stefan Gustavson (https://github.com/stegu/webgl-noise)
@@ -105,6 +106,8 @@ const newVertexShader = `
 
   void main() {
     vec3 objectPosition = position; 
+    vObjectPosition = objectPosition; // Pass original position
+
     float time = uTime * uNoiseSpeed;
     
     vec3 noiseInput = objectPosition * uNoiseFrequency;
@@ -124,12 +127,102 @@ const newVertexShader = `
 const newFragmentShader = `
   uniform vec3 uLowColor;
   uniform vec3 uHighColor;
+  uniform vec3 uFoamColor;
+  uniform float uFoamCrestThreshold;
+  uniform float uFoamCrestSmoothness;
+  uniform float uFoamPatternFrequency;
+  uniform float uFoamPatternThreshold;
+  uniform float uFoamPatternSmoothness;
+  uniform float uFoamPatternStrength;
+  uniform float uFoamAnimationSpeed;
+  uniform float uTime; // Need time for foam animation
 
   varying float vWaveHeight;
+  varying vec3 vObjectPosition; // Original object position
+
+  // Simplex 3D Noise (copy from vertex shader or a common include)
+  vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+    vec3 i = floor(v + dot(v, C.yyy));
+    vec3 x0 = v - i + dot(i, C.xxx);
+
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min(g.xyz, l.zxy);
+    vec3 i2 = max(g.xyz, l.zxy);
+
+    vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+    vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+    vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
+
+    i = mod(i, 289.0);
+    vec4 p = permute(permute(permute(
+               i.z + vec4(0.0, i1.z, i2.z, 1.0))
+             + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+             + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+    float n_ = 1.0 / 7.0;
+    vec3 ns = n_ * D.wyz - D.xzx;
+
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_);
+
+    vec4 x = x_ * ns.x + ns.yyyy;
+    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+
+    vec4 b0 = vec4(x.xy, y.xy);
+    vec4 b1 = vec4(x.zw, y.zw);
+
+    vec4 s0 = floor(b0) * 2.0 + 1.0;
+    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+
+    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+    vec3 p0 = vec3(a0.xy, h.x);
+    vec3 p1 = vec3(a0.zw, h.y);
+    vec3 p2 = vec3(a1.xy, h.z);
+    vec3 p3 = vec3(a1.zw, h.w);
+
+    vec4 normVal = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+    p0 *= normVal.x;
+    p1 *= normVal.y;
+    p2 *= normVal.z;
+    p3 *= normVal.w;
+
+    vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+  }
 
   void main() {
-    vec3 color = mix(uLowColor, uHighColor, vWaveHeight);
-    gl_FragColor = vec4(color, 1.0);
+    vec3 baseColor = mix(uLowColor, uHighColor, vWaveHeight);
+
+    // Crest Foam
+    float crestFoam = smoothstep(uFoamCrestThreshold - uFoamCrestSmoothness, uFoamCrestThreshold + uFoamCrestSmoothness, vWaveHeight);
+
+    // Web-like Surface Foam
+    vec3 patternNoiseInput = vObjectPosition * uFoamPatternFrequency;
+    patternNoiseInput.x += uTime * uFoamAnimationSpeed; // Animate foam pattern
+    float patternNoise = (snoise(patternNoiseInput) + 1.0) * 0.5; // Normalize snoise output to 0-1
+    float webFoam = smoothstep(uFoamPatternThreshold - uFoamPatternSmoothness, uFoamPatternThreshold + uFoamPatternSmoothness, patternNoise) * uFoamPatternStrength;
+
+    // Combine foam
+    float totalFoam = clamp(crestFoam + webFoam, 0.0, 1.0);
+
+    // Mix base color with foam color
+    vec3 finalColor = mix(baseColor, uFoamColor, totalFoam);
+
+    gl_FragColor = vec4(finalColor, 1.0);
   }
 `;
 
@@ -142,6 +235,15 @@ const NewWaterMaterial = shaderMaterial(
     uNoiseIntensity: 0.01,
     uNoiseFrequency: 20.0,
     uNoiseSpeed: 0.1,
+    // Foam Uniforms
+    uFoamColor: new THREE.Color(0xffffff), // White foam
+    uFoamCrestThreshold: 0.6, // Waves higher than this start showing foam
+    uFoamCrestSmoothness: 0.1, // How soft the transition to foam is
+    uFoamPatternFrequency: 10.0, // Scale of the web-like foam pattern
+    uFoamPatternThreshold: 0.7, // Noise values above this become foam
+    uFoamPatternSmoothness: 0.05, // Sharpness of the web-like foam edges
+    uFoamPatternStrength: 0.5, // Overall intensity of the web-like foam
+    uFoamAnimationSpeed: 0.05, // Speed of the web-like foam animation
   },
   newVertexShader,
   newFragmentShader
@@ -180,6 +282,57 @@ export const Earth2 = forwardRef((props, ref) => {
       max: 1.0,
       step: 0.01,
       label: "Noise Speed",
+    },
+    // Foam Controls
+    foamColor: { value: "#ffffff", label: "Foam Color" },
+    foamCrestThreshold: {
+      value: 0.6,
+      min: 0.0,
+      max: 1.0,
+      step: 0.01,
+      label: "Foam Crest Threshold",
+    },
+    foamCrestSmoothness: {
+      value: 0.1,
+      min: 0.01,
+      max: 0.5,
+      step: 0.01,
+      label: "Foam Crest Smoothness",
+    },
+    foamPatternFrequency: {
+      value: 10.0,
+      min: 1.0,
+      max: 50.0,
+      step: 0.1,
+      label: "Foam Pattern Frequency",
+    },
+    foamPatternThreshold: {
+      value: 0.7,
+      min: 0.0,
+      max: 1.0,
+      step: 0.01,
+      label: "Foam Pattern Threshold",
+    },
+    foamPatternSmoothness: {
+      value: 0.05,
+      min: 0.01,
+      max: 0.2,
+      step: 0.005,
+      label: "Foam Pattern Smoothness",
+    },
+    foamPatternStrength: {
+      value: 0.5,
+      min: 0.0,
+      max: 1.0,
+      step: 0.01,
+      label: "Foam Pattern Strength",
+    },
+    foamAnimationSpeed: {
+      value: 0.05,
+      min: 0.0,
+      max: 0.2,
+      step: 0.005,
+      label: "Foam Animation Speed",
     },
     // Remove old controls if they are no longer relevant
     // waveIntensity: false,
@@ -226,6 +379,15 @@ export const Earth2 = forwardRef((props, ref) => {
           uNoiseIntensity={shaderControls.noiseIntensity}
           uNoiseFrequency={shaderControls.noiseFrequency}
           uNoiseSpeed={shaderControls.noiseSpeed}
+          // Pass foam uniforms
+          uFoamColor={shaderControls.foamColor}
+          uFoamCrestThreshold={shaderControls.foamCrestThreshold}
+          uFoamCrestSmoothness={shaderControls.foamCrestSmoothness}
+          uFoamPatternFrequency={shaderControls.foamPatternFrequency}
+          uFoamPatternThreshold={shaderControls.foamPatternThreshold}
+          uFoamPatternSmoothness={shaderControls.foamPatternSmoothness}
+          uFoamPatternStrength={shaderControls.foamPatternStrength}
+          uFoamAnimationSpeed={shaderControls.foamAnimationSpeed}
         />
       </mesh>
 
