@@ -55,7 +55,7 @@ export function SceneCanvas({ scrollContainerRef }) {
           position: [0, 0.5, 4],
         }}
       >
-        {/* <OrbitControls /> */}
+        <OrbitControls />
 
         <Environment files={modelUrl} />
         {/* <color attach="background" args={["black"]} /> */}
