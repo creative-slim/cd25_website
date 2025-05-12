@@ -5,12 +5,20 @@ Files: ./public/earthv4_UV.glb [356.76KB] > /Users/slim-cd/Documents/_Projects/_
 */
 
 import React, { useRef, useMemo, useEffect } from "react"; // Import useEffect
-import { useGLTF, useTexture, shaderMaterial } from "@react-three/drei"; // Import shaderMaterial
-import { useFrame, extend } from "@react-three/fiber"; // Import extend
+import { useGLTF, useTexture, shaderMaterial, Sphere } from "@react-three/drei"; // Import shaderMaterial
+import { useFrame, extend, useThree } from "@react-three/fiber"; // Import extend
 import * as THREE from "three";
 import { Suspense } from "react";
 import { forwardRef, useImperativeHandle } from "react";
 import { useControls } from "leva"; // Import useControls
+import {
+  Color,
+  RepeatWrapping,
+  DoubleSide,
+  WebGLCubeRenderTarget,
+  CubeCamera,
+  LinearMipmapLinearFilter,
+} from "three";
 
 // Determine the model URL based on the environment
 const isDevelopment = import.meta.env.DEV;
@@ -19,346 +27,394 @@ const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb"; // Corrected remote URL if needed
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
+const localWaterTextureUrl = "/water-texture.jpg";
+const remoteWaterTextureUrl =
+  "http://files.creative-directors.com/creative-website/creative25/textures/water-texture.jpg";
+const waterTextureUrl = isDevelopment
+  ? localWaterTextureUrl
+  : remoteWaterTextureUrl; // Corrected remote URL if needed
+console.log(`Loading water texture from: ${waterTextureUrl}`); // Log which URL is being used
+
 console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
 
-// Define the NEW shaders from scratch
-const newVertexShader = `
+const waterVertexShader = `
   uniform float uTime;
-  uniform float uNoiseIntensity;
   uniform float uNoiseFrequency;
+  uniform float uNoiseAmplitude;
   uniform float uNoiseSpeed;
 
-  varying float vWaveHeight;
-  varying vec3 vObjectPosition; // To pass original position to fragment shader
+  varying vec2 vUv;
+  varying vec3 vWorldPosition;
+  varying vec3 vWorldNormal;
 
-  // Simplex 3D Noise 
-  // by Ian McEwan, Stefan Gustavson (https://github.com/stegu/webgl-noise)
-  // Helper functions for snoise(vec3)
-  vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
-  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-  float snoise(vec3 v) {
-    const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
-    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-    // First corner
-    vec3 i = floor(v + dot(v, C.yyy));
-    vec3 x0 = v - i + dot(i, C.xxx);
-
-    // Other corners
-    vec3 g = step(x0.yzx, x0.xyz);
-    vec3 l = 1.0 - g;
-    vec3 i1 = min(g.xyz, l.zxy);
-    vec3 i2 = max(g.xyz, l.zxy);
-
-    vec3 x1 = x0 - i1 + 1.0 * C.xxx;
-    vec3 x2 = x0 - i2 + 2.0 * C.xxx;
-    vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
-
-    // Permutations
-    i = mod(i, 289.0);
-    vec4 p = permute(permute(permute(
-               i.z + vec4(0.0, i1.z, i2.z, 1.0))
-             + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-             + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-    // Gradients: N*N points uniformly over a square, mapped onto an octahedron.
-    // N=7, n_ = 1.0/N
-    float n_ = 1.0 / 7.0;
-    vec3 ns = n_ * D.wyz - D.xzx;
-
-    vec4 j = p - 49.0 * floor(p * ns.z * ns.z); // mod(p, N*N)
-
-    vec4 x_ = floor(j * ns.z);
-    vec4 y_ = floor(j - 7.0 * x_); // mod(j, N)
-
-    vec4 x = x_ * ns.x + ns.yyyy;
-    vec4 y = y_ * ns.x + ns.yyyy;
-    vec4 h = 1.0 - abs(x) - abs(y);
-
-    vec4 b0 = vec4(x.xy, y.xy);
-    vec4 b1 = vec4(x.zw, y.zw);
-
-    vec4 s0 = floor(b0) * 2.0 + 1.0;
-    vec4 s1 = floor(b1) * 2.0 + 1.0;
-    vec4 sh = -step(h, vec4(0.0));
-
-    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
-
-    vec3 p0 = vec3(a0.xy, h.x);
-    vec3 p1 = vec3(a0.zw, h.y);
-    vec3 p2 = vec3(a1.xy, h.z);
-    vec3 p3 = vec3(a1.zw, h.w);
-
-    // Normalise gradients
-    vec4 normVal = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
-    p0 *= normVal.x;
-    p1 *= normVal.y;
-    p2 *= normVal.z;
-    p3 *= normVal.w;
-
-    // Mix final noise value
-    vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
-    m = m * m;
-    return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
-  }
-
-  void main() {
-    vec3 objectPosition = position; 
-    vObjectPosition = objectPosition; // Pass original position
-
-    float time = uTime * uNoiseSpeed;
-    
-    vec3 noiseInput = objectPosition * uNoiseFrequency;
-    noiseInput.z += time; 
-
-    float noiseValue = snoise(noiseInput);
-    
-    vec3 displacedPosition = objectPosition + normalize(normal) * noiseValue * uNoiseIntensity;
-    
-    vWaveHeight = (noiseValue + 1.0) * 0.5; 
-    vWaveHeight = clamp(vWaveHeight, 0.0, 1.0);
-
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
-  }
-`;
-
-const newFragmentShader = `
-  uniform vec3 uLowColor;
-  uniform vec3 uHighColor;
-  uniform vec3 uFoamColor;
-  uniform float uFoamCrestThreshold;
-  uniform float uFoamCrestSmoothness;
-  uniform float uFoamPatternFrequency;
-  uniform float uFoamPatternThreshold;
-  uniform float uFoamPatternSmoothness;
-  uniform float uFoamPatternStrength;
-  uniform float uFoamAnimationSpeed;
-  uniform float uTime; // Need time for foam animation
-
-  varying float vWaveHeight;
-  varying vec3 vObjectPosition; // Original object position
-
-  // Simplex 3D Noise (copy from vertex shader or a common include)
-  vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
-  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+  // Simplex 3D noise
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.853734720909014 * r; }
 
   float snoise(vec3 v) {
-    const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
     const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-    vec3 i = floor(v + dot(v, C.yyy));
-    vec3 x0 = v - i + dot(i, C.xxx);
-
+    vec3 i  = floor(v + dot(v, C.yyy) );
+    vec3 x0 = v - i + dot(i, C.xxx) ;
     vec3 g = step(x0.yzx, x0.xyz);
     vec3 l = 1.0 - g;
-    vec3 i1 = min(g.xyz, l.zxy);
-    vec3 i2 = max(g.xyz, l.zxy);
-
-    vec3 x1 = x0 - i1 + 1.0 * C.xxx;
-    vec3 x2 = x0 - i2 + 2.0 * C.xxx;
-    vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
-
-    i = mod(i, 289.0);
-    vec4 p = permute(permute(permute(
-               i.z + vec4(0.0, i1.z, i2.z, 1.0))
-             + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-             + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-    float n_ = 1.0 / 7.0;
+    vec3 i1 = min( g.xyz, l.zxy );
+    vec3 i2 = max( g.xyz, l.zxy );
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute( permute( permute(
+              i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+            + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+    float n_ = 0.142857142857; // 1.0/7.0
     vec3 ns = n_ * D.wyz - D.xzx;
-
     vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-
     vec4 x_ = floor(j * ns.z);
-    vec4 y_ = floor(j - 7.0 * x_);
-
-    vec4 x = x_ * ns.x + ns.yyyy;
-    vec4 y = y_ * ns.x + ns.yyyy;
+    vec4 y_ = floor(j - 7.0 * x_ );
+    vec4 x = x_ *ns.x + ns.yyyy;
+    vec4 y = y_ *ns.x + ns.yyyy;
     vec4 h = 1.0 - abs(x) - abs(y);
-
-    vec4 b0 = vec4(x.xy, y.xy);
-    vec4 b1 = vec4(x.zw, y.zw);
-
-    vec4 s0 = floor(b0) * 2.0 + 1.0;
-    vec4 s1 = floor(b1) * 2.0 + 1.0;
+    vec4 b0 = vec4( x.xy, y.xy );
+    vec4 b1 = vec4( x.zw, y.zw );
+    vec4 s0 = floor(b0)*2.0 + 1.0;
+    vec4 s1 = floor(b1)*2.0 + 1.0;
     vec4 sh = -step(h, vec4(0.0));
-
-    vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-    vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
-
-    vec3 p0 = vec3(a0.xy, h.x);
-    vec3 p1 = vec3(a0.zw, h.y);
-    vec3 p2 = vec3(a1.xy, h.z);
-    vec3 p3 = vec3(a1.zw, h.w);
-
-    vec4 normVal = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
-    p0 *= normVal.x;
-    p1 *= normVal.y;
-    p2 *= normVal.z;
-    p3 *= normVal.w;
-
-    vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+    vec3 p0 = vec3(a0.xy,h.x);
+    vec3 p1 = vec3(a0.zw,h.y);
+    vec3 p2 = vec3(a1.xy,h.z);
+    vec3 p3 = vec3(a1.zw,h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
     m = m * m;
-    return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+    return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
   }
 
   void main() {
-    vec3 baseColor = mix(uLowColor, uHighColor, vWaveHeight);
+    vUv = uv;
 
-    // Crest Foam
-    float crestFoam = smoothstep(uFoamCrestThreshold - uFoamCrestSmoothness, uFoamCrestThreshold + uFoamCrestSmoothness, vWaveHeight);
+    // Use uniforms for noise properties
+    float displacement = snoise(position * uNoiseFrequency + uTime * uNoiseSpeed) * uNoiseAmplitude;
+    displacement += snoise(position * uNoiseFrequency * 2.5 + uTime * uNoiseSpeed * 1.5) * uNoiseAmplitude * 0.5;
 
-    // Web-like Surface Foam
-    vec3 patternNoiseInput = vObjectPosition * uFoamPatternFrequency;
-    patternNoiseInput.x += uTime * uFoamAnimationSpeed; // Animate foam pattern
-    float patternNoise = (snoise(patternNoiseInput) + 1.0) * 0.5; // Normalize snoise output to 0-1
-    float webFoam = smoothstep(uFoamPatternThreshold - uFoamPatternSmoothness, uFoamPatternThreshold + uFoamPatternSmoothness, patternNoise) * uFoamPatternStrength;
+    vec3 newPosition = position + normal * displacement;
 
-    // Combine foam
-    float totalFoam = clamp(crestFoam + webFoam, 0.0, 1.0);
+    // Calculate world position and normal for reflection
+    vec4 worldPosition = modelMatrix * vec4(newPosition, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    vWorldNormal = normalize(mat3(modelMatrix) * normal); // Assuming no non-uniform scaling
 
-    // Mix base color with foam color
-    vec3 finalColor = mix(baseColor, uFoamColor, totalFoam);
-
-    gl_FragColor = vec4(finalColor, 1.0);
+    gl_Position = projectionMatrix * viewMatrix * worldPosition;
   }
 `;
 
-// Create a new custom material using shaderMaterial
-const NewWaterMaterial = shaderMaterial(
+const waterFragmentShader = `
+  uniform sampler2D uTexture;
+  uniform bool uUseTexture; // To control texture usage
+  uniform vec3 uColor;
+  uniform float uOpacity;
+
+  uniform samplerCube uEnvMap; 
+  uniform float uReflectivity; 
+
+  uniform float uRoughness;
+  uniform float uMetalness;
+
+  // Caustics Uniforms
+  uniform float uTime;
+  uniform float uCausticsFrequency;
+  uniform float uCausticsSpeed;
+  uniform float uCausticsIntensity;
+  uniform float uCausticsSharpness;
+  uniform float uCausticsEdgeThickness;
+  uniform float uCausticsDistortionFrequency; // New
+  uniform float uCausticsDistortionAmplitude; // New
+
+  varying vec2 vUv;
+  varying vec3 vWorldPosition;
+  varying vec3 vWorldNormal;
+
+  // Simplex 3D noise (copied from vertex shader)
+  vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+  vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+  vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.853734720909014 * r; }
+
+  float snoise(vec3 v) {
+    const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
+    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+    vec3 i  = floor(v + dot(v, C.yyy) );
+    vec3 x0 = v - i + dot(i, C.xxx) ;
+    vec3 g = step(x0.yzx, x0.xyz);
+    vec3 l = 1.0 - g;
+    vec3 i1 = min( g.xyz, l.zxy );
+    vec3 i2 = max( g.xyz, l.zxy );
+    vec3 x1 = x0 - i1 + C.xxx;
+    vec3 x2 = x0 - i2 + C.yyy;
+    vec3 x3 = x0 - D.yyy;
+    i = mod289(i);
+    vec4 p = permute( permute( permute(
+              i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+            + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
+            + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+    float n_ = 0.142857142857; // 1.0/7.0
+    vec3 ns = n_ * D.wyz - D.xzx;
+    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+    vec4 x_ = floor(j * ns.z);
+    vec4 y_ = floor(j - 7.0 * x_ );
+    vec4 x = x_ *ns.x + ns.yyyy;
+    vec4 y = y_ *ns.x + ns.yyyy;
+    vec4 h = 1.0 - abs(x) - abs(y);
+    vec4 b0 = vec4( x.xy, y.xy );
+    vec4 b1 = vec4( x.zw, y.zw );
+    vec4 s0 = floor(b0)*2.0 + 1.0;
+    vec4 s1 = floor(b1)*2.0 + 1.0;
+    vec4 sh = -step(h, vec4(0.0));
+    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+    vec3 p0 = vec3(a0.xy,h.x);
+    vec3 p1 = vec3(a0.zw,h.y);
+    vec3 p2 = vec3(a1.xy,h.z);
+    vec3 p3 = vec3(a1.zw,h.w);
+    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+    m = m * m;
+    return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
+  }
+
+  // Hash function to create pseudo-random vectors
+  vec2 hash( vec2 p ) {
+      p = vec2( dot(p,vec2(127.1,311.7)), dot(p,vec2(269.5,183.3)) );
+      return -1.0 + 2.0*fract(sin(p)*43758.5453123);
+  }
+
+  // Voronoi noise function returning distance to closest (F1) and second closest (F2) points
+  vec2 voronoi(vec2 x, float time) {
+      vec2 p = floor(x);
+      vec2 f = fract(x);
+      
+      float F1 = 10.0; // Initialize with a large value
+      float F2 = 10.0; // Initialize with a large value
+
+      for (int j = -1; j <= 1; j++) {
+          for (int i = -1; i <= 1; i++) {
+              vec2 g = vec2(float(i), float(j)); // Neighbor cell
+              vec2 o = hash(p + g); // Random offset for cell center
+              
+              float cellTime = time + dot(p + g, vec2(0.13, 0.27)) * 10.0; // Vary animation per cell
+              vec2 animatedOffset = o + vec2(sin(cellTime * 0.5), cos(cellTime * 0.3)) * 0.4; // Adjust movement
+
+              vec2 r = g + animatedOffset - f;
+              float d = dot(r,r); // Squared distance
+
+              if (d < F1) {
+                  F2 = F1;
+                  F1 = d;
+              } else if (d < F2) {
+                  F2 = d;
+              }
+          }
+      }
+      return vec2(sqrt(F1), sqrt(F2)); // Return actual distances
+  }
+
+
+  void main() {
+    vec3 albedo = uColor;
+    if (uUseTexture) {
+        vec4 texSample = texture2D(uTexture, vUv);
+        albedo = mix(uColor, texSample.rgb, texSample.a * 0.6 + 0.4); 
+    }
+
+    vec3 N = normalize(vWorldNormal);
+    vec3 V = normalize(cameraPosition - vWorldPosition);
+    vec3 R = reflect(-V, N);
+
+    vec3 envColor = textureCube(uEnvMap, R).rgb;
+    vec3 processedReflection = mix(envColor, albedo, uRoughness);
+
+    vec3 F0 = vec3(0.04); 
+    F0 = mix(F0, albedo, uMetalness);
+
+    vec3 diffuseColor = albedo * (1.0 - uMetalness); 
+    vec3 specularColor = processedReflection * F0 * uReflectivity;
+    
+    vec3 finalColor = diffuseColor + specularColor;
+
+    // Caustics UV Distortion
+    float distortionTime = uTime * 0.1; // Slower animation for distortion
+    vec2 distortionOffset = vec2(
+      snoise(vec3(vUv * uCausticsDistortionFrequency, distortionTime)),
+      snoise(vec3(vUv * uCausticsDistortionFrequency + vec2(5.2, 1.3), distortionTime)) // Offset for second noise
+    ) * uCausticsDistortionAmplitude;
+    vec2 distortedUv = vUv + distortionOffset;
+
+    // Caustics Calculation using F2-F1 for edges
+    vec2 voronoiDistances = voronoi(distortedUv * uCausticsFrequency, uTime * uCausticsSpeed);
+    float f1 = voronoiDistances.x;
+    float f2 = voronoiDistances.y;
+
+    float edgeFactor = f2 - f1;
+    
+    // Gaussian-like profile for softer lines
+    float normalizedEdge = edgeFactor / uCausticsEdgeThickness;
+    float causticsPattern = exp(-normalizedEdge * normalizedEdge * uCausticsSharpness);
+    
+    float causticsEffect = causticsPattern * uCausticsIntensity;
+
+    finalColor.rgb += causticsEffect; // Add caustics to the final color
+
+    gl_FragColor = vec4(finalColor, uOpacity);
+  }
+`;
+
+const WaterMaterial = shaderMaterial(
   {
+    // Uniforms
     uTime: 0,
-    uLowColor: new THREE.Color(0x000033), // Deep blue
-    uHighColor: new THREE.Color(0x66ccff), // Lighter blue
-    uNoiseIntensity: 0.01,
-    uNoiseFrequency: 20.0,
-    uNoiseSpeed: 0.1,
-    // Foam Uniforms
-    uFoamColor: new THREE.Color(0xffffff), // White foam
-    uFoamCrestThreshold: 0.6, // Waves higher than this start showing foam
-    uFoamCrestSmoothness: 0.1, // How soft the transition to foam is
-    uFoamPatternFrequency: 10.0, // Scale of the web-like foam pattern
-    uFoamPatternThreshold: 0.7, // Noise values above this become foam
-    uFoamPatternSmoothness: 0.05, // Sharpness of the web-like foam edges
-    uFoamPatternStrength: 0.5, // Overall intensity of the web-like foam
-    uFoamAnimationSpeed: 0.05, // Speed of the web-like foam animation
+    uColor: new Color(0x1e90ff), // Default water color
+    uTexture: null,
+    uUseTexture: true,
+    uOpacity: 0.84, // Updated
+    uNoiseFrequency: 6.4, // Updated
+    uNoiseAmplitude: 0.02, // Updated
+    uNoiseSpeed: 0.5, // Updated
+    uEnvMap: null,
+    uReflectivity: 0.59, // Updated
+    uRoughness: 0.57, // Updated
+    uMetalness: 0.2, // Updated
+    // Caustics uniforms
+    uCausticsFrequency: 14.3, // Updated
+    uCausticsSpeed: 0.16, // Updated
+    uCausticsIntensity: 0.2, // Updated
+    uCausticsSharpness: 1.0, // Updated
+    uCausticsEdgeThickness: 0.13, // Updated
+    uCausticsDistortionFrequency: 19.5, // Updated
+    uCausticsDistortionAmplitude: 0.14, // Updated
   },
-  newVertexShader,
-  newFragmentShader
+  waterVertexShader,
+  waterFragmentShader,
+  (material) => {
+    // Optional: Callback to configure the material
+    if (material) {
+      material.transparent = true;
+      material.depthWrite = false;
+      // material.side = DoubleSide;
+    }
+  }
 );
 
-// Extend Three.js to include this material
-extend({ NewWaterMaterial }); // Use a different name if WaterMaterial is still in use elsewhere or remove the old one
+extend({ WaterMaterial });
 
 export const Earth2 = forwardRef((props, ref) => {
   const { nodes, materials } = useGLTF(modelUrl);
+
   // const oceanTexture = useTexture("/seamless_ocean.png"); // Not used in the new shader
   // const matcapTexture = useTexture("/matcap_ocean.png"); // Not used in the new shader
   const sphereRef = useRef();
   const waterMaterialRef = useRef();
+  const waterMeshRef = useRef(); // Ref for the water sphere mesh
 
-  const shaderControls = useControls("Ocean Shader", {
-    lowColor: { value: "#5e5eff", label: "Low Color" },
-    highColor: { value: "#66ccff", label: "High Color" },
-    noiseIntensity: {
+  const { gl, scene } = useThree(); // To access scene.environment
+
+  const materialRef = useRef();
+  const innerSphereRef = useRef();
+
+  const waterTexture = useTexture(waterTextureUrl);
+
+  const {
+    noiseFrequency,
+    noiseAmplitude,
+    noiseSpeed,
+    waterColor,
+    waterOpacity,
+    reflectivity,
+    roughness,
+    metalness,
+    useTextureFlag,
+    // Caustics controls
+    causticsFrequency,
+    causticsSpeed,
+    causticsIntensity,
+    causticsSharpness,
+    causticsEdgeThickness,
+    causticsDistortionFrequency,
+    causticsDistortionAmplitude,
+  } = useControls("Water Shader", {
+    noiseFrequency: { value: 3.0, min: 0.1, max: 20, step: 0.1 }, // max increased for flexibility
+    noiseAmplitude: { value: 0.02, min: 0.001, max: 0.1, step: 0.001 }, // min/step adjusted
+    noiseSpeed: { value: 0.3, min: 0.0, max: 2, step: 0.01 },
+    waterColor: "#00b2ff",
+    waterOpacity: { value: 0.88, min: 0, max: 1, step: 0.01 },
+    reflectivity: { value: 0, min: 0, max: 1, step: 0.01 },
+    roughness: { value: 0.34, min: 0, max: 1, step: 0.01 },
+    metalness: { value: 0.2, min: 0, max: 1, step: 0.01 },
+    useTextureFlag: { value: true, label: "Use Water Texture" },
+    causticsFrequency: {
+      value: 10.0,
+      min: 1,
+      max: 50,
+      step: 0.1,
+      folder: "Caustics",
+    },
+    causticsSpeed: {
+      value: 0.44,
+      min: 0.0,
+      max: 1.0,
+      step: 0.01,
+      folder: "Caustics",
+    },
+    causticsIntensity: {
+      value: 0.25,
+      min: 0,
+      max: 2,
+      step: 0.01,
+      folder: "Caustics",
+    },
+    causticsSharpness: {
+      value: 0.02,
+      min: 0.01,
+      max: 10,
+      step: 0.01,
+      folder: "Caustics",
+    },
+    causticsEdgeThickness: {
       value: 0.01,
       min: 0.001,
-      max: 0.1,
-      step: 0.001,
-      label: "Noise Intensity",
-    },
-    noiseFrequency: {
-      value: 20.0,
-      min: 1.0,
-      max: 100.0,
-      step: 0.1,
-      label: "Noise Frequency",
-    },
-    noiseSpeed: {
-      value: 0.1,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      label: "Noise Speed",
-    },
-    // Foam Controls
-    foamColor: { value: "#ffffff", label: "Foam Color" },
-    foamCrestThreshold: {
-      value: 0.6,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      label: "Foam Crest Threshold",
-    },
-    foamCrestSmoothness: {
-      value: 0.1,
-      min: 0.01,
       max: 0.5,
-      step: 0.01,
-      label: "Foam Crest Smoothness",
+      step: 0.001,
+      folder: "Caustics",
     },
-    foamPatternFrequency: {
-      value: 10.0,
-      min: 1.0,
-      max: 50.0,
+    causticsDistortionFrequency: {
+      value: 25.0,
+      min: 0.1,
+      max: 50,
       step: 0.1,
-      label: "Foam Pattern Frequency",
-    },
-    foamPatternThreshold: {
-      value: 0.7,
+      folder: "Caustics",
+    }, // max increased
+    causticsDistortionAmplitude: {
+      value: 0.04,
       min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      label: "Foam Pattern Threshold",
-    },
-    foamPatternSmoothness: {
-      value: 0.05,
-      min: 0.01,
-      max: 0.2,
-      step: 0.005,
-      label: "Foam Pattern Smoothness",
-    },
-    foamPatternStrength: {
-      value: 0.5,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      label: "Foam Pattern Strength",
-    },
-    foamAnimationSpeed: {
-      value: 0.05,
-      min: 0.0,
-      max: 0.2,
-      step: 0.005,
-      label: "Foam Animation Speed",
-    },
-    // Remove old controls if they are no longer relevant
-    // waveIntensity: false,
-    // waveFrequency: false,
-    // waveSpeed: false,
-    // simplexIntensity: false,
-    // simplexFrequency: false,
-    // simplexSpeed: false,
-    // perlinIntensity: false,
-    // perlinFrequency: false,
-    // perlinSpeed: false,
-    // matcapMixFactor: false,
+      max: 0.5,
+      step: 0.001,
+      folder: "Caustics",
+    }, // max increased
   });
 
-  // useEffect(() => { // Old texture setup, not needed for new shader
-  //   if (oceanTexture) {
-  //     oceanTexture.wrapS = THREE.RepeatWrapping;
-  //     oceanTexture.wrapT = THREE.RepeatWrapping;
-  //     oceanTexture.repeat.set(4, 4);
-  //     oceanTexture.needsUpdate = true;
-  //   }
-  // }, [oceanTexture]);
+  if (waterTexture) {
+    waterTexture.wrapS = waterTexture.wrapT = RepeatWrapping;
+  }
 
   useFrame((state, delta) => {
-    if (waterMaterialRef.current) {
-      waterMaterialRef.current.uTime += delta;
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value += delta; // uNoiseSpeed will now control the effective speed
     }
   });
 
@@ -366,30 +422,41 @@ export const Earth2 = forwardRef((props, ref) => {
     <group ref={ref} {...props} dispose={null}>
       <mesh
         name="ocean"
-        ref={sphereRef}
+        ref={waterMeshRef}
         rotation={[-0.1, 0.9, -1.0]} // Keep existing rotation if desired
         scale={1.85} // Keep existing scale if desired
       >
         <sphereGeometry args={[1.023, 128 * 4, 128 * 4]} />
-        {/* Increased segments for smoother noise, adjust as needed */}
-        <newWaterMaterial
-          ref={waterMaterialRef}
-          uLowColor={shaderControls.lowColor}
-          uHighColor={shaderControls.highColor}
-          uNoiseIntensity={shaderControls.noiseIntensity}
-          uNoiseFrequency={shaderControls.noiseFrequency}
-          uNoiseSpeed={shaderControls.noiseSpeed}
-          // Pass foam uniforms
-          uFoamColor={shaderControls.foamColor}
-          uFoamCrestThreshold={shaderControls.foamCrestThreshold}
-          uFoamCrestSmoothness={shaderControls.foamCrestSmoothness}
-          uFoamPatternFrequency={shaderControls.foamPatternFrequency}
-          uFoamPatternThreshold={shaderControls.foamPatternThreshold}
-          uFoamPatternSmoothness={shaderControls.foamPatternSmoothness}
-          uFoamPatternStrength={shaderControls.foamPatternStrength}
-          uFoamAnimationSpeed={shaderControls.foamAnimationSpeed}
+        <waterMaterial
+          ref={materialRef}
+          attach="material"
+          uTexture={waterTexture} // Always pass the loaded texture
+          uUseTexture={useTextureFlag && !!waterTexture} // Control usage in shader
+          uColor={new Color(waterColor)}
+          uOpacity={waterOpacity}
+          uNoiseFrequency={noiseFrequency}
+          uNoiseAmplitude={noiseAmplitude}
+          uNoiseSpeed={noiseSpeed}
+          uEnvMap={scene.environment} // Pass the environment map
+          uReflectivity={reflectivity}
+          uRoughness={roughness}
+          uMetalness={metalness}
+          // Pass caustics uniforms
+          uCausticsFrequency={causticsFrequency}
+          uCausticsSpeed={causticsSpeed}
+          uCausticsIntensity={causticsIntensity}
+          uCausticsSharpness={causticsSharpness}
+          uCausticsEdgeThickness={causticsEdgeThickness}
+          uCausticsDistortionFrequency={causticsDistortionFrequency} // Pass new uniform
+          uCausticsDistortionAmplitude={causticsDistortionAmplitude} // Pass new uniform
         />
       </mesh>
+      <Sphere
+        ref={innerSphereRef}
+        args={[1.023, 128 * 4, 128 * 4]} // Adjust segments for smoother noise
+        position={[0, 0, 0]}
+        scale={1.7}
+      />
 
       <mesh
         name="continent"
