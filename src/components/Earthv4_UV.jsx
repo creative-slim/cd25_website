@@ -103,7 +103,7 @@ const waterVertexShader = `
     float displacement = snoise(position * uNoiseFrequency + uTime * uNoiseSpeed) * uNoiseAmplitude;
     displacement += snoise(position * uNoiseFrequency * 2.5 + uTime * uNoiseSpeed * 1.5) * uNoiseAmplitude * 0.5;
 
-    vec3 newPosition = position + normal * displacement;
+    vec3 newPosition = position - normal * displacement; // Inverted displacement
 
     // Calculate world position and normal for reflection
     vec4 worldPosition = modelMatrix * vec4(newPosition, 1.0);
@@ -423,8 +423,8 @@ export const Earth2 = forwardRef((props, ref) => {
       <mesh
         name="ocean"
         ref={waterMeshRef}
-        rotation={[-0.1, 0.9, -1.0]} // Keep existing rotation if desired
-        scale={1.85} // Keep existing scale if desired
+        rotation={[-0.8, 0.5, -0.55]} // Keep existing rotation if desired
+        scale={1.82} // Keep existing scale if desired
       >
         <sphereGeometry args={[1.023, 128 * 4, 128 * 4]} />
         <waterMaterial

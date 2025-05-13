@@ -14,8 +14,16 @@ import * as THREE from "three";
 
 import gsap from "gsap";
 
+const isDevelopment = import.meta.env.DEV;
+
+const newHeaderurl = "/FontWorkWebpage.glb";
+const localModelUrl = "/site-headings.glb";
+const remoteModelUrl =
+  "https://files.creative-directors.com/creative-website/creative25/glbs/site-headings.glb"; // Corrected remote URL if needed
+const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 export const CDtext = forwardRef((props, ref) => {
-  const { nodes, materials } = useGLTF("/site-headings.glb");
+  const { nodes, materials } = useGLTF(modelUrl);
+
   // References to all letter meshes
   const letterRefs = useRef([]);
   const groupRef = useRef();
@@ -449,4 +457,4 @@ export const CDtext = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload("/site-headings.glb");
+useGLTF.preload(modelUrl);

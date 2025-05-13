@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, Stars } from "@react-three/drei";
+import { OrbitControls, Environment, Stars, Center } from "@react-three/drei";
 import { NodeToyTick } from "@nodetoy/react-nodetoy";
 import { Suspense } from "react";
 import { AnimationManager } from "./AnimationManager";
@@ -19,6 +19,8 @@ import { Kreaton } from "./Kreaton_A";
 import { Earth2 } from "./Earthv4_UV";
 import { PointingFinger } from "./PointingFinger"; // Import PointingFinger
 import { CDtext } from "./Site-headings";
+import { NewFont } from "./FontWorkWebpage";
+import { Header_v1 } from "./CD_header_v1_untransformed";
 
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "/artist_workshop_4k.hdr";
@@ -61,12 +63,18 @@ export function SceneCanvas({ scrollContainerRef }) {
         {/* <color attach="background" args={["black"]} /> */}
         {/* <Stars saturation={0} count={400} speed={0.5} /> */}
         <ambientLight intensity={0.1} />
+
         {/* <directionalLight position={[10, 10, -5]} intensity={1} /> */}
         <Suspense fallback={null}>
           <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
           {/* <Kreaton ref={kreatonRef} position={[0, 0.02, 0]} /> */}
           <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
-
+          {/* <NewFont
+            scale={100}
+            position={[-20, 2, 0]}
+            rotation={[Math.PI / 2, 0, 0]}
+          />{" "}
+          Added scale prop with value */}
           <Rotator ref={rotatorRef} position={[0, -10, 0]} />
           {/* Add PointingFinger component, initially hidden or positioned off-screen */}
           <PointingFinger
@@ -76,13 +84,19 @@ export function SceneCanvas({ scrollContainerRef }) {
             visible={false}
           />
 
+          {/* CDtext to be removed */}
           <CDtext
             ref={cdTextRef}
             position={[0, 1, 0]}
             scale={0.8}
             rotation={[Math.PI / 2, 0, 0]}
+            visible={false}
           />
 
+          {/* <Header_v1 will replace CDTEXT */}
+          <Center position={[0, 2, 0]}>
+            <Header_v1 scale={10} />
+          </Center>
           {/* Add Clump component */}
           <Physics>
             <Clump
