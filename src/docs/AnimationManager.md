@@ -108,3 +108,91 @@ The `AnimationManager` component controls animations, camera movements, and scro
 - Designed to work with React Three Fiber
 - Timeline creation happens after models are loaded
 - Animation transitions use crossfade for smooth blending
+
+## Key Features
+
+### 1. Camera Controls
+- **Camera Position**: Smoothly moves the camera to different positions
+- **Camera Target**: Controls where the camera is looking
+- **FOV (Field of View)**: Adjusts the camera's field of view for different effects
+  - Default FOV: 55°
+  - Wide FOV: 70°
+
+### 2. Earth Rotation
+- Controls the rotation of the 3D Earth model
+- Can start and stop rotation
+- Smooth transitions between rotation states
+
+### 3. Animation Sequences
+- **Initial Sequence**: Sets up the initial camera position and view
+- **Rotator Sequence**: Handles the rotator element animations
+- **Point Cycle**: Controls pointing finger animations
+- **Explosion Effects**: Manages explosion animations
+
+### 4. Debug System
+- Color-coded console logging for different types of events:
+  - Sequence logs (blue)
+  - Animation logs (green)
+  - Timeline logs (purple)
+  - System logs (orange)
+  - Error logs (red)
+  - Model logs (yellow)
+  - Time logs (light blue)
+  - ScrollTrigger logs (pink)
+
+## Main Functions
+
+### Camera Functions
+```javascript
+setCameraPosition(position, options)
+setCameraTarget(target, options)
+setFOV(fov, options)
+```
+These functions handle smooth camera movements with customizable duration and easing.
+
+### Earth Control
+```javascript
+startEarthRotation()
+stopEarthRotation()
+```
+Controls the Earth model's rotation state.
+
+### Animation Control
+```javascript
+rotatorX(x)
+```
+Controls the rotator element's movement.
+
+## Usage Example
+```javascript
+<AnimationManager
+  kreatonRef={kreatonRef}
+  earthRef={earthRef}
+  rotatorRef={rotatorRef}
+  clumpRef={clumpRef}
+  pointingFingerRef={pointingFingerRef}
+  cdTextRef={cdTextRef}
+/>
+```
+
+## Best Practices
+1. Always use the provided animation functions instead of direct GSAP calls
+2. Use the debug logging system for troubleshooting
+3. Keep animation durations reasonable (1-2 seconds for most transitions)
+4. Use appropriate easing functions for smooth animations
+
+## Common Issues and Solutions
+1. **Camera Jumps**: Use `setCameraPosition` and `setCameraTarget` together
+2. **Animation Conflicts**: The manager automatically kills conflicting tweens
+3. **Performance**: Animations are optimized for smooth performance
+
+## Dependencies
+- GSAP
+- Three.js
+- React Three Fiber
+- ScrollTrigger (GSAP plugin)
+
+## Notes
+- All animations are managed through GSAP timelines
+- The component includes automatic cleanup of animations
+- Debug logs can be toggled using the `DEBUG_LOGS` constant
