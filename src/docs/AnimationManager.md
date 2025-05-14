@@ -224,3 +224,41 @@ Controls the rotator element's movement.
 - All animations are managed through GSAP timelines
 - The component includes automatic cleanup of animations
 - Debug logs can be toggled using the `DEBUG_LOGS` constant
+
+## Improvement Plan: TypeScript, Testing, and Performance
+
+### Goals
+- Increase code robustness and maintainability
+- Catch bugs earlier with type safety and tests
+- Ensure smooth performance for all users
+
+### Step-by-Step Plan
+
+#### 1. TypeScript Migration
+- [ ] Convert AnimationManager.jsx to AnimationManager.tsx
+- [ ] Add type annotations for all props, refs, and state
+- [ ] Add types for GSAP timelines, ScrollTriggers, and model refs
+- [ ] Ensure type safety for all animation and camera functions
+
+#### 2. Unit & Integration Testing
+- [ ] Set up a test framework (Jest + React Testing Library)
+- [ ] Write unit tests for animation triggers and state transitions
+- [ ] Write integration tests for scroll-driven animation sequences
+- [ ] Add tests for cleanup logic (timelines, timeouts, ScrollTriggers)
+
+#### 3. Performance Profiling
+- [ ] Use React Profiler to check for unnecessary renders
+- [ ] Use GSAP's performance tools to check for dropped frames
+- [ ] Optimize any slow or heavy animation logic
+
+### Review Checklist (Before Each Step)
+- [ ] Will this change break the current animation flow?
+- [ ] Are all public APIs and props backward compatible?
+- [ ] Is there a rollback plan if something fails?
+- [ ] Are improvements measurable (type errors, test coverage, FPS)?
+
+---
+
+## Next Steps
+- Review this plan for safety and value
+- Begin with TypeScript migration, then add tests, then profile performance

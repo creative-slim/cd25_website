@@ -4,6 +4,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGSAP } from "@gsap/react"; // Import useGSAP
+import { MutableRefObject, RefObject } from "react";
 
 // Register ScrollTrigger with GSAP
 gsap.registerPlugin(ScrollTrigger);
@@ -56,28 +57,61 @@ const createLogger = (mainTimeline) => {
   };
 };
 
+// Types for model refs (replace 'any' with more specific types if available)
+interface AnimationManagerProps {
+  kreatonRef: RefObject<any>;
+  earthRef: RefObject<any>;
+  rotatorRef: RefObject<any>;
+  clumpRef: RefObject<any>;
+  pointingFingerRef?: RefObject<any>;
+  cdTextRef?: RefObject<any>;
+}
+
+// Animation options type for camera and FOV transitions
+interface AnimationOptions {
+  duration?: number;
+  ease?: string;
+  onStart?: () => void;
+  onComplete?: () => void;
+}
+
+// Section timeline options for createSectionTimeline
+interface SectionTimelineOptions {
+  onEnter?: () => void;
+  onLeave?: () => void;
+  onEnterBack?: () => void;
+  onLeaveBack?: () => void;
+  onUpdate?: (self: any) => void;
+  start?: string;
+  end?: string;
+  scrub?: boolean;
+  markers?: boolean;
+  toggleActions?: string;
+  animations?: Array<{ target: gsap.TweenTarget; vars: gsap.TweenVars; position?: number }>;
+}
+
 export function AnimationManager({
   kreatonRef,
   earthRef,
   rotatorRef,
   clumpRef,
-  pointingFingerRef, // Accept pointingFingerRef
-  cdTextRef, // Accept cdTextRef
-}) {
-  const { camera } = useThree();
-  const mainTimelineRef = useRef(null);
-  const [modelReady, setModelReady] = useState(false);
-  const earthRotationRef = useRef(null);
-  const [isEarthRotating, setIsEarthRotating] = useState(false);
-  const logRef = useRef((type, msg, ...args) => {
+  pointingFingerRef,
+  cdTextRef,
+}: AnimationManagerProps) {
+  const { camera } = useThree(); // camera is always PerspectiveCamera in this app
+  const mainTimelineRef = useRef<gsap.core.Timeline | null>(null);
+  const [modelReady, setModelReady] = useState<boolean>(false);
+  const earthRotationRef = useRef<(() => void) | null>(null);
+  const [isEarthRotating, setIsEarthRotating] = useState<boolean>(false);
+  const logRef = useRef<(type: string, msg: string, ...args: any[]) => void>((type, msg, ...args) => {
     if (type === "error") console.error(msg, ...args);
     else if (DEBUG_LOGS) console.log(msg, ...args);
   });
-  const cameraTargetRef = useRef(new THREE.Vector3(0, 1, 0));
-  const hasPushedRef = useRef(false);
-  const explosionTimeoutRef = useRef(null);
-  const pointCycleTimeoutRef = useRef(null); // Ref for the POINT/IDLE cycle timeout
-  const initializedRef = useRef(false); // Double-mount guard
+  const cameraTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0));
+  const hasPushedRef = useRef<boolean>(false);
+  const explosionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pointCycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initializedRef = useRef<boolean>(false);
 
   // Reset state when component mounts
   useEffect(() => {
@@ -129,7 +163,7 @@ export function AnimationManager({
 
   // Refactored camera target function using LERP
   const setCameraTarget = useCallback(
-    (targetPosition, options = {}) => {
+    (targetPosition: THREE.Vector3 | { x: number; y: number; z: number }, options: AnimationOptions = {}) => {
       const {
         duration = 1,
         ease = "power2.inOut",
@@ -146,8 +180,7 @@ export function AnimationManager({
           2
         )}, ${cameraTargetRef.current.y.toFixed(
           2
-        )}, ${cameraTargetRef.current.z.toFixed(2)}] to [${targetPosition.x}, ${
-          targetPosition.y
+        )}, ${cameraTargetRef.current.z.toFixed(2)}] to [${targetPosition.x}, ${targetPosition.y
         }, ${targetPosition.z}] using direct GSAP tween`
       );
 
@@ -185,11 +218,11 @@ export function AnimationManager({
       });
     },
     [camera]
-  ); // Added camera to dependencies
+  );
 
   // New function to consistently handle camera position animations
   const setCameraPosition = useCallback(
-    (position, options = {}) => {
+    (position: THREE.Vector3 | { x: number; y: number; z: number }, options: AnimationOptions = {}) => {
       const {
         duration = 1,
         ease = "power2.inOut",
@@ -233,11 +266,11 @@ export function AnimationManager({
       });
     },
     [camera]
-  ); // Added camera to dependencies
+  );
 
   // Function to smoothly change camera FOV
   const setFOV = useCallback(
-    (fov, options = {}) => {
+    (fov: number, options: AnimationOptions = {}) => {
       const {
         duration = 1,
         ease = "power2.inOut",
@@ -246,16 +279,16 @@ export function AnimationManager({
       } = options;
 
       // Kill any existing tweens targeting the camera FOV to prevent conflicts
-      gsap.killTweensOf(camera, "fov");
+      gsap.killTweensOf(camera as THREE.PerspectiveCamera, "fov");
 
       logRef.current(
         "system",
-        `Setting camera FOV from ${camera.fov.toFixed(
+        `Setting camera FOV from ${(camera as THREE.PerspectiveCamera).fov.toFixed(
           1
         )} to ${fov} using GSAP tween`
       );
 
-      gsap.to(camera, {
+      gsap.to(camera as THREE.PerspectiveCamera, {
         fov,
         duration,
         ease,
@@ -265,25 +298,24 @@ export function AnimationManager({
         },
         onUpdate: () => {
           // IMPORTANT: Update projection matrix on each frame of the tween
-          camera.updateProjectionMatrix();
+          (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
         },
         onComplete: () => {
           // Ensure final FOV is set and matrix updated
-          camera.updateProjectionMatrix();
+          (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
           if (onComplete) onComplete();
           logRef.current(
             "system",
-            `Camera FOV animation complete: ${camera.fov.toFixed(1)}`
+            `Camera FOV animation complete: ${(camera as THREE.PerspectiveCamera).fov.toFixed(1)}`
           );
         },
       });
     },
     [camera]
-  ); // Added camera to dependencies
+  );
 
   // Helper function to create ScrollTrigger sections
-  //? checked
-  const createSectionTimeline = useCallback((sectionId, options = {}) => {
+  const createSectionTimeline = useCallback((sectionId: string, options: SectionTimelineOptions = {}) => {
     const {
       onEnter,
       onLeave,
@@ -335,7 +367,7 @@ export function AnimationManager({
     });
 
     return timeline;
-  }, []); // Empty dependency array as it uses logRef (stable) and gsap (global)
+  }, []);
 
   // Check if model is ready
   useEffect(() => {
@@ -488,14 +520,14 @@ export function AnimationManager({
             { x: 0, y: 0.5, z: 4 },
             { duration: 1, ease: "sine.inOut" }
           );
-          if (cdTextRef.current) {
+          if (cdTextRef?.current) {
             logRef.current("animation", "Playing CDtext intro animation");
             cdTextRef.current.moveUp();
             cdTextRef.current.show();
           }
         },
         onLeave: () => {
-          if (cdTextRef.current) {
+          if (cdTextRef?.current) {
             logRef.current("animation", "Playing CDtext intro animation");
             cdTextRef.current.moveUp(10);
             cdTextRef.current.hide();
@@ -596,7 +628,7 @@ export function AnimationManager({
             clumpRef.current.setActive(true);
             clumpRef.current.toggleShield(true);
           }
-          if (cdTextRef.current) {
+          if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
         },
@@ -639,7 +671,7 @@ export function AnimationManager({
     */
       createSectionTimeline("section-3", {
         onEnter: () => {
-          if (cdTextRef.current) {
+          if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
         },
@@ -955,7 +987,7 @@ export function AnimationManager({
     Section 7 - Final Reset
     */
       createSectionTimeline("section-7", {
-        onEnter: () => {},
+        onEnter: () => { },
         onLeaveBack: () => {
           logRef.current(
             "scrollTrigger",
