@@ -30,7 +30,7 @@ const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb"; // Corrected remote URL if needed
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
-console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
+// DEBUG: console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
 
 export const Kreaton = forwardRef((props, ref) => {
   // Remove local/remote definitions here as they are now outside the component
@@ -304,7 +304,7 @@ export const Kreaton = forwardRef((props, ref) => {
       // skinMaterial.map.offset.y %= 1;
     }
 
-    // NodeToyMaterial.tick();
+    // NodeToyMaterial.tick(); // UNUSED: NodeToyMaterial live update
   });
 
   return (

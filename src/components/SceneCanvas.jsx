@@ -55,7 +55,7 @@ export function SceneCanvas({ scrollContainerRef }) {
         }}
       >
          <Suspense fallback={null}>
-            <Perf position="top-left" />
+            {/* <Perf position="top-left" /> */}
 
         {/* <OrbitControls /> */}
 

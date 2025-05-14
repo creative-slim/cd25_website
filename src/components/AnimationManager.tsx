@@ -112,15 +112,18 @@ export function AnimationManager({
   const explosionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pointCycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initializedRef = useRef<boolean>(false);
+  const initialAnimationPlayedRef = useRef<boolean>(false);
 
   // Reset state when component mounts
   useEffect(() => {
     hasPushedRef.current = false;
+    initialAnimationPlayedRef.current = false;
     logRef.current(
       "system",
       "🚀 ANIMATION MANAGER MOUNTED - PUSH state reset:",
       {
         hasPushedRef: hasPushedRef.current,
+        initialAnimationPlayed: initialAnimationPlayedRef.current
       }
     );
   }, []);
@@ -438,6 +441,7 @@ export function AnimationManager({
       const mainTimeline = gsap.timeline({
         smoothChildTiming: true,
         autoRemoveChildren: false,
+        paused: false, // Start timeline immediately
       });
       mainTimelineRef.current = mainTimeline; // Assign to ref
       updateLogger(mainTimeline); // Initialize logger with the timeline
@@ -461,10 +465,11 @@ export function AnimationManager({
       );
 
       /*
-    Initial animation setup - plays without scrolling
-    */
-      if (animations.includes("JUMP") && animations.includes("WALKING")) {
+      Initial animation setup - plays without scrolling
+      */
+      if (animations.includes("JUMP") && animations.includes("WALKING") && !initialAnimationPlayedRef.current) {
         logRef.current("model", "PLAYING ANIMATION JUMP->WALK");
+        initialAnimationPlayedRef.current = true;
         kreatonRef.current.transitionAnimation("JUMP", "WALKING", {
           crossFadeTime: 0.8,
           fadeInDuration: 0.3,
@@ -473,18 +478,22 @@ export function AnimationManager({
       }
 
       /*
-    Section 0 - Introduction/Walking
-    */
+      Section 0 - Introduction/Walking
+      */
       createSectionTimeline("section-0", {
         end: "bottom 80%",
         onEnter: () => {
-          logRef.current("model", "PLAYING ANIMATION current->WALKING");
-          kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
-            crossFadeTime: 0.8,
-            fadeInDuration: 0.3,
-          });
-          startEarthRotation();
-          setCameraTarget({ x: 0, y: 1, z: 0 }, { duration: 1 });
+          // Only start walking if we haven't played the initial animation
+          if (!initialAnimationPlayedRef.current) {
+            logRef.current("model", "PLAYING ANIMATION current->WALKING");
+            initialAnimationPlayedRef.current = true;
+            kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
+              crossFadeTime: 0.8,
+              fadeInDuration: 0.3,
+            });
+            startEarthRotation();
+            setCameraTarget({ x: 0, y: 1, z: 0 }, { duration: 1 });
+          }
         },
         onLeaveBack: () => {
           logRef.current(
@@ -536,8 +545,8 @@ export function AnimationManager({
       });
 
       /*
-    Section 1 - Salute Animation
-    */
+      Section 1 - Salute Animation
+      */
       createSectionTimeline("section-1", {
         onEnter: () => {
           setCameraPosition(
@@ -615,8 +624,8 @@ export function AnimationManager({
       }
 
       /*
-    Section 2 - Rotation Sequence
-    */
+      Section 2 - Rotation Sequence
+      */
       createSectionTimeline("section-2", {
         onEnter: () => {
           logRef.current("scrollTrigger", "Transitioning to carousel view");
@@ -667,8 +676,8 @@ export function AnimationManager({
       });
 
       /*
-    new Section 3 - Activating clump particles
-    */
+      new Section 3 - Activating clump particles
+      */
       createSectionTimeline("section-3", {
         onEnter: () => {
           if (cdTextRef?.current) {
@@ -709,8 +718,8 @@ export function AnimationManager({
       });
 
       /*
-    Section 4 - Final Explosion Sequence
-    */
+      Section 4 - Final Explosion Sequence
+      */
       createSectionTimeline("section-4", {
         onEnter: () => {
           setFOV(DEFAULT_FOV);
@@ -821,8 +830,8 @@ export function AnimationManager({
       });
 
       /*
-    Section 5 - back to Kreaton face
-    */
+      Section 5 - back to Kreaton face
+      */
       createSectionTimeline("section-5", {
         onEnter: () => {
           setCameraPosition(
@@ -871,8 +880,8 @@ export function AnimationManager({
       });
 
       /*
-    Section 6 - kreaton side and point
-    */
+      Section 6 - kreaton side and point
+      */
       createSectionTimeline("section-6", {
         onEnter: () => {
           logRef.current(
@@ -984,8 +993,8 @@ export function AnimationManager({
       });
 
       /*
-    Section 7 - Final Reset
-    */
+      Section 7 - Final Reset
+      */
       createSectionTimeline("section-7", {
         onEnter: () => { },
         onLeaveBack: () => {
