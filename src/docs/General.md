@@ -6,17 +6,93 @@
 ```
 src/
 ├── components/
-│   ├── AnimationManager.jsx    # Controls all animations and camera movements
-│   ├── Kreaton.jsx            # Main character model and animations
-│   ├── Earth.jsx              # Earth model and rotation logic
-│   ├── Rotator.jsx            # Rotating container component
-│   ├── Clump.jsx              # Particle system and effects
-│   └── UI/                    # User interface components
-├── models/                    # 3D model assets
-├── materials/                 # Three.js materials
-├── shaders/                   # Custom GLSL shaders
-└── utils/                     # Helper functions
+│   ├── AnimationManager.jsx        # Central animation control system
+│   ├── SceneCanvas.jsx            # Main 3D scene container
+│   ├── Kreaton.jsx                # Base character component
+│   ├── Kreaton_A.jsx              # Advanced character features
+│   ├── Earthv4_UV.jsx             # Earth model with UV mapping
+│   ├── Clump.jsx                  # Particle system and effects
+│   ├── Carosel.jsx                # 3D carousel component
+│   ├── PointingFinger.jsx         # Interactive pointing element
+│   ├── Finger.jsx                 # Base finger component
+│   ├── FingerFixed.jsx            # Optimized finger component
+│   ├── CD_header_v1.jsx           # Header component
+│   ├── CD_header_v1_untransformed.jsx  # Raw header component
+│   ├── Site-headings.jsx          # Site navigation and headings
+│   ├── FontWorkWebpage.jsx        # Typography and text components
+│   └── unused/                    # Deprecated components
+├── utils/
+│   ├── useSmoothScroll.jsx        # Custom scroll hook
+│   ├── animationUtils.js          # Animation helper functions
+│   ├── animationControlSystem.js  # Animation control utilities
+│   └── caroselUtil.js            # Carousel helper functions
+├── models/                        # 3D model assets
+├── materials/                     # Three.js materials
+├── shaders/                       # Custom GLSL shaders
+├── assets/                        # Static assets
+├── App.jsx                        # Main application component
+└── main.jsx                       # Application entry point
 ```
+
+### Architecture Layers
+
+1. **Presentation Layer**
+   - UI Components (CD_header_v1, Site-headings, FontWorkWebpage)
+   - 3D Scene Components (SceneCanvas, Earthv4_UV, Kreaton)
+   - Interactive Elements (PointingFinger, Carosel)
+
+2. **Animation Layer**
+   - AnimationManager (Central control)
+   - Animation Utilities (animationUtils.js, animationControlSystem.js)
+   - GSAP Integration
+   - Scroll-based Animations (useSmoothScroll.jsx)
+
+3. **3D Rendering Layer**
+   - Three.js Integration
+   - Custom Shaders
+   - Material System
+   - Model Management
+
+4. **Utility Layer**
+   - Helper Functions
+   - Custom Hooks
+   - Performance Optimizations
+   - State Management
+
+### Key Architectural Patterns
+
+1. **Component Hierarchy**
+   ```
+   App
+   ├── SceneCanvas
+   │   ├── AnimationManager
+   │   ├── Kreaton
+   │   ├── Earth
+   │   ├── Clump
+   │   └── Carosel
+   └── UI Components
+       ├── CD_header
+       ├── Site-headings
+       └── FontWorkWebpage
+   ```
+
+2. **Data Flow**
+   - Top-down props flow
+   - Centralized animation control
+   - Event-driven updates
+   - State management through refs
+
+3. **Performance Considerations**
+   - Component splitting for better performance
+   - Optimized 3D models
+   - Efficient animation system
+   - Proper cleanup and memory management
+
+4. **Development Patterns**
+   - Component-based architecture
+   - Custom hooks for reusable logic
+   - Utility functions for common operations
+   - Clear separation of concerns
 
 ## Component Interactions
 

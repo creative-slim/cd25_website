@@ -1,8 +1,48 @@
 # AnimationManager Component Documentation
 
 ## Overview
+The `AnimationManager` is a React component that orchestrates all major animations, camera movements, and timeline-based interactions in the Creative Directors website. It leverages GSAP (GreenSock Animation Platform) and ScrollTrigger for smooth, scroll-driven, and programmatic animations, and is tightly integrated with Three.js via React Three Fiber.
 
-The `AnimationManager` component controls animations, camera movements, and scroll-triggered sequences throughout the website. It integrates 3D models, GSAP animations, and ScrollTrigger to create an interactive experience that responds to user scrolling.
+## Key Features
+- **Centralized Animation Control:** Manages all major scene and character animations.
+- **Camera Management:** Smoothly animates camera position, target, and FOV.
+- **Scroll-Driven Timelines:** Uses GSAP ScrollTrigger to synchronize animations with scroll position.
+- **Earth Rotation:** Controls the rotation of the 3D Earth model, with start/stop logic.
+- **Section-Based Animation:** Each scroll section triggers specific animation sequences and camera moves.
+- **Robust Logging:** Enhanced, color-coded logs for debugging and animation state tracking.
+
+## Best Practices & Optimizations (as of React 19)
+- **Strict Cleanup:** All GSAP timelines, ScrollTriggers, and timeouts are cleaned up on unmount to prevent memory leaks and double triggers, especially important with React StrictMode.
+- **Double-Mount Guard:** Uses a ref to ensure initialization logic only runs once per mount, avoiding issues with React 19's double-invocation in development.
+- **Stable Callbacks:** All animation and event handlers are wrapped in `useCallback` for performance and stability.
+- **Minimal useEffect Dependencies:** Effects use stable refs and callbacks to avoid unnecessary reruns.
+- **Side Effect Documentation:** Each effect and animation setup is documented for clarity and maintainability.
+
+## Usage Example
+```jsx
+<AnimationManager
+  kreatonRef={kreatonRef}
+  earthRef={earthRef}
+  rotatorRef={rotatorRef}
+  clumpRef={clumpRef}
+  pointingFingerRef={pointingFingerRef}
+  cdTextRef={cdTextRef}
+/>
+```
+
+## Cleanup Logic
+- On unmount, the component:
+  - Clears all timeouts (e.g., for animation cycles or delayed effects)
+  - Kills all GSAP timelines and ScrollTriggers
+  - Resets double-mount guard ref
+
+## When to Use
+- For any scene where you need coordinated, scroll-driven, or programmatic animation of cameras, models, or effects in a Three.js/React environment.
+
+## Further Reading
+- [GSAP ScrollTrigger Docs](https://greensock.com/scrolltrigger/)
+- [React Three Fiber Docs](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction)
+- [React 19 StrictMode](https://react.dev/blog/2024/04/25/react-19-rc)
 
 ## Props
 
@@ -162,18 +202,6 @@ Controls the Earth model's rotation state.
 rotatorX(x)
 ```
 Controls the rotator element's movement.
-
-## Usage Example
-```javascript
-<AnimationManager
-  kreatonRef={kreatonRef}
-  earthRef={earthRef}
-  rotatorRef={rotatorRef}
-  clumpRef={clumpRef}
-  pointingFingerRef={pointingFingerRef}
-  cdTextRef={cdTextRef}
-/>
-```
 
 ## Best Practices
 1. Always use the provided animation functions instead of direct GSAP calls

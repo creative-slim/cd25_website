@@ -1,16 +1,12 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment, Stars, Center } from "@react-three/drei";
-import { NodeToyTick } from "@nodetoy/react-nodetoy";
 import { Suspense } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
-// import {
-//   Bloom,
-//   DepthOfField,
-//   EffectComposer,
-//   Noise,
-//   Vignette,
-// } from "@react-three/postprocessing";
+import { Perf } from 'r3f-perf';
+
+import { Bloom, DepthOfField, EffectComposer, Noise, Vignette } from '@react-three/postprocessing'
+
 import { Physics } from "@react-three/cannon";
 import * as THREE from "three";
 import { Rotator } from "./Carosel";
@@ -43,6 +39,7 @@ export function SceneCanvas({ scrollContainerRef }) {
       <Canvas
         // shadows
         // dpr={[1, 2]}
+
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.LinearToneMapping;
           gl.toneMappingExposure = 1.0;
@@ -57,15 +54,18 @@ export function SceneCanvas({ scrollContainerRef }) {
           position: [0, 0.5, 4],
         }}
       >
+         <Suspense fallback={null}>
+            <Perf position="top-left" />
+
         {/* <OrbitControls /> */}
 
         <Environment files={modelUrl} />
         {/* <color attach="background" args={["black"]} /> */}
         {/* <Stars saturation={0} count={400} speed={0.5} /> */}
         <ambientLight intensity={0.1} />
-
+        
         {/* <directionalLight position={[10, 10, -5]} intensity={1} /> */}
-        <Suspense fallback={null}>
+       
           <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
           {/* <Kreaton ref={kreatonRef} position={[0, 0.02, 0]} /> */}
           <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
@@ -107,7 +107,6 @@ export function SceneCanvas({ scrollContainerRef }) {
             />
           </Physics>
         </Suspense>
-        <NodeToyTick />
         <AnimationManager
           kreatonRef={kreatonRef}
           earthRef={earthRef}
@@ -117,17 +116,13 @@ export function SceneCanvas({ scrollContainerRef }) {
           cdTextRef={cdTextRef} // Pass the CDtext ref to AnimationManager
           scrollContainerRef={scrollContainerRef}
         />
-        {/* <EffectComposer>
-          <DepthOfField
-            focusDistance={0}
-            focalLength={0.02}
-            bokehScale={2}
-            height={480}
-          />
-          <Bloom luminanceThreshold={0} luminanceSmoothing={0.9} height={300} />
-          <Noise opacity={0.02} />
-          <Vignette eskil={false} offset={0.1} darkness={1.1} />
-        </EffectComposer> */}
+
+      {/* <EffectComposer>
+        <DepthOfField focusDistance={0} focalLength={0.02} bokehScale={2} height={480} />
+        <Bloom luminanceThreshold={0} luminanceSmoothing={0.9} height={300} />
+        <Noise opacity={0.02} />
+        <Vignette eskil={false} offset={0.1} darkness={1.1} />
+      </EffectComposer> */}
       </Canvas>
     </Suspense>
   );

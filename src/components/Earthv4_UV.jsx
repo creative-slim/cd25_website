@@ -15,8 +15,6 @@ import {
   Color,
   RepeatWrapping,
   DoubleSide,
-  WebGLCubeRenderTarget,
-  CubeCamera,
   LinearMipmapLinearFilter,
 } from "three";
 
@@ -119,9 +117,6 @@ const waterFragmentShader = `
   uniform bool uUseTexture; // To control texture usage
   uniform vec3 uColor;
   uniform float uOpacity;
-
-  uniform samplerCube uEnvMap; 
-  uniform float uReflectivity; 
 
   uniform float uRoughness;
   uniform float uMetalness;
@@ -235,18 +230,13 @@ const waterFragmentShader = `
 
     vec3 N = normalize(vWorldNormal);
     vec3 V = normalize(cameraPosition - vWorldPosition);
-    vec3 R = reflect(-V, N);
-
-    vec3 envColor = textureCube(uEnvMap, R).rgb;
-    vec3 processedReflection = mix(envColor, albedo, uRoughness);
 
     vec3 F0 = vec3(0.04); 
     F0 = mix(F0, albedo, uMetalness);
 
     vec3 diffuseColor = albedo * (1.0 - uMetalness); 
-    vec3 specularColor = processedReflection * F0 * uReflectivity;
     
-    vec3 finalColor = diffuseColor + specularColor;
+    vec3 finalColor = diffuseColor;
 
     // Caustics UV Distortion
     float distortionTime = uTime * 0.1; // Slower animation for distortion
@@ -286,8 +276,6 @@ const WaterMaterial = shaderMaterial(
     uNoiseFrequency: 6.4, // Updated
     uNoiseAmplitude: 0.02, // Updated
     uNoiseSpeed: 0.5, // Updated
-    uEnvMap: null,
-    uReflectivity: 0.59, // Updated
     uRoughness: 0.57, // Updated
     uMetalness: 0.2, // Updated
     // Caustics uniforms
@@ -302,7 +290,6 @@ const WaterMaterial = shaderMaterial(
   waterVertexShader,
   waterFragmentShader,
   (material) => {
-    // Optional: Callback to configure the material
     if (material) {
       material.transparent = true;
       material.depthWrite = false;
@@ -335,7 +322,6 @@ export const Earth2 = forwardRef((props, ref) => {
     noiseSpeed,
     waterColor,
     waterOpacity,
-    reflectivity,
     roughness,
     metalness,
     useTextureFlag,
@@ -353,7 +339,6 @@ export const Earth2 = forwardRef((props, ref) => {
     noiseSpeed: { value: 0.3, min: 0.0, max: 2, step: 0.01 },
     waterColor: "#00b2ff",
     waterOpacity: { value: 0.88, min: 0, max: 1, step: 0.01 },
-    reflectivity: { value: 0, min: 0, max: 1, step: 0.01 },
     roughness: { value: 0.34, min: 0, max: 1, step: 0.01 },
     metalness: { value: 0.2, min: 0, max: 1, step: 0.01 },
     useTextureFlag: { value: true, label: "Use Water Texture" },
@@ -437,8 +422,6 @@ export const Earth2 = forwardRef((props, ref) => {
           uNoiseFrequency={noiseFrequency}
           uNoiseAmplitude={noiseAmplitude}
           uNoiseSpeed={noiseSpeed}
-          uEnvMap={scene.environment} // Pass the environment map
-          uReflectivity={reflectivity}
           uRoughness={roughness}
           uMetalness={metalness}
           // Pass caustics uniforms

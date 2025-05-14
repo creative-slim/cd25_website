@@ -66,7 +66,6 @@ export function AnimationManager({
 }) {
   const { camera } = useThree();
   const mainTimelineRef = useRef(null);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [modelReady, setModelReady] = useState(false);
   const earthRotationRef = useRef(null);
   const [isEarthRotating, setIsEarthRotating] = useState(false);
@@ -78,6 +77,7 @@ export function AnimationManager({
   const hasPushedRef = useRef(false);
   const explosionTimeoutRef = useRef(null);
   const pointCycleTimeoutRef = useRef(null); // Ref for the POINT/IDLE cycle timeout
+  const initializedRef = useRef(false); // Double-mount guard
 
   // Reset state when component mounts
   useEffect(() => {
@@ -388,7 +388,19 @@ export function AnimationManager({
   // Setup animation timeline with ScrollTrigger using useGSAP
   useGSAP(
     () => {
-      if (!modelReady) return;
+      // Double-mount guard for dev/StrictMode
+      if (initializedRef.current) {
+        console.log("AnimationManager: Already initialized, skipping setup.");
+        return;
+      }
+
+      if (!modelReady) {
+        console.log("AnimationManager: modelReady is false, skipping setup.");
+        return;
+      }
+
+      initializedRef.current = true; // Only set after modelReady is true
+      console.log("AnimationManager: useGSAP running, modelReady is true, initializing timeline.");
 
       // Create the main timeline
       const mainTimeline = gsap.timeline({
@@ -961,7 +973,9 @@ export function AnimationManager({
         },
       });
 
+      // Cleanup logic for GSAP, ScrollTrigger, and timeouts
       return () => {
+        initializedRef.current = false;
         if (explosionTimeoutRef.current) {
           clearTimeout(explosionTimeoutRef.current);
           explosionTimeoutRef.current = null;
@@ -969,6 +983,11 @@ export function AnimationManager({
         if (pointCycleTimeoutRef.current) {
           clearTimeout(pointCycleTimeoutRef.current);
           pointCycleTimeoutRef.current = null;
+        }
+        // Kill all GSAP timelines and ScrollTriggers to prevent memory leaks
+        gsap.globalTimeline.clear();
+        if (typeof ScrollTrigger !== 'undefined') {
+          ScrollTrigger.getAll().forEach(trigger => trigger.kill());
         }
       };
     },
@@ -993,13 +1012,5 @@ export function AnimationManager({
     }
   ); // End of useGSAP
 
-  return (
-    <>
-      {isInitialized ? null : (
-        <mesh visible={false}>
-          {/* Trigger to ensure component updates when isInitialized changes */}
-        </mesh>
-      )}
-    </>
-  );
+  return null;
 }
