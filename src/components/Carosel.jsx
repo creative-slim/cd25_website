@@ -26,7 +26,7 @@ import { gsap } from "gsap";
 // Define the number of cards to display
 const NUM_CARDS_TO_DISPLAY = 6;
 // Define the radius of the circle for card placement
-const radius = 5; // Add this line to define the radius
+const radius = 4; // Add this line to define the radius
 
 const fetchImageData = async (webhookUrl) => {
   try {
@@ -96,41 +96,110 @@ function Card({
   ...props
 }) {
   const ref = useRef();
+  const portalRef = useRef();
   const [hovered, hover] = useState(false);
+
   const pointerOver = (e) => {
     e.stopPropagation();
     hover(true);
-    onHoverStart?.(); // Call handler if provided
+    onHoverStart?.();
   };
+
   const pointerOut = () => {
-    // No stopPropagation needed on pointerOut usually
     hover(false);
-    onHoverEnd?.(); // Call handler if provided
+    onHoverEnd?.();
   };
+
   useFrame((state, delta) => {
+    // Animate the main card
     easing.damp3(ref.current.scale, hovered ? 1.5 : 1.3, 0.1, delta);
-    easing.damp(
-      ref.current.material,
-      "radius",
-      hovered ? 0.25 : 0.1,
-      0.2,
-      delta
-    );
+    easing.damp(ref.current.material, "radius", hovered ? 0.25 : 0.1, 0.2, delta);
     easing.damp(ref.current.material, "zoom", hovered ? 1 : 1.5, 0.2, delta);
+
+    // Animate the portal effect
+    if (portalRef.current) {
+      const time = state.clock.getElapsedTime();
+      portalRef.current.rotation.z = time * 0.2;
+      portalRef.current.children.forEach((ring, i) => {
+        ring.rotation.z = -time * (0.2 + i * 0.1);
+        ring.material.opacity = hovered ? 0.8 : 0.4;
+        ring.scale.x = hovered ? 1.2 : 1;
+        ring.scale.y = hovered ? 1.2 : 1;
+      });
+    }
   });
+
   return (
-    <Image
-      ref={ref}
-      url={url}
-      transparent
-      side={THREE.DoubleSide}
-      onPointerOver={pointerOver}
-      onPointerOut={pointerOut}
-      userData={{ index, data }} // Store index and data in userData for easy access
-      {...props}
-    >
-      <bentPlaneGeometry args={[0.1, 1.618, 1, 20, 20]} />
-    </Image>
+    <group {...props}>
+      {/* Portal effect */}
+      <group ref={portalRef}>
+        {/* Outer ring */}
+        <mesh position={[0, 0, -0.01]}>
+          <ringGeometry args={[1.8, 2.0, 64]} />
+          <meshBasicMaterial
+            color="#4a9eff"
+            transparent
+            opacity={0.4}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Middle ring */}
+        <mesh position={[0, 0, -0.02]}>
+          <ringGeometry args={[1.6, 1.8, 64]} />
+          <meshBasicMaterial
+            color="#00ffaa"
+            transparent
+            opacity={0.4}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Inner ring */}
+        <mesh position={[0, 0, -0.03]}>
+          <ringGeometry args={[1.4, 1.6, 64]} />
+          <meshBasicMaterial
+            color="#ff4a9e"
+
+            transparent
+            opacity={0.4}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+
+        {/* Energy particles */}
+        <points>
+          <bufferGeometry>
+            <bufferAttribute
+              attach="attributes-position"
+              count={50}
+              array={new Float32Array(50 * 3).map(() => (Math.random() - 0.5) * 4)}
+              itemSize={3}
+            />
+          </bufferGeometry>
+          <pointsMaterial
+            color="#ffffff"
+            size={0.05}
+            transparent
+            opacity={0.6}
+            sizeAttenuation
+          />
+        </points>
+      </group>
+
+      {/* Main image */}
+      <Image
+        ref={ref}
+        url={url}
+        transparent
+        side={THREE.DoubleSide}
+        onPointerOver={pointerOver}
+        onPointerOut={pointerOut}
+        userData={{ index, data }}
+      >
+        <bentPlaneGeometry args={[0.1, 1.618, 1, 20, 20]} />
+      </Image>
+    </group>
   );
 }
 

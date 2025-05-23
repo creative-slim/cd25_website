@@ -391,7 +391,7 @@ export const Earth2 = forwardRef((props, ref) => {
       step: 0.001,
       folder: "Caustics",
     }, // max increased
-  });
+  }, { collapsed: true });
 
   if (waterTexture) {
     waterTexture.wrapS = waterTexture.wrapT = RepeatWrapping;
