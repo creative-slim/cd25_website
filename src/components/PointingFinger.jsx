@@ -9,16 +9,15 @@ import { useGLTF } from "@react-three/drei";
 import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
 import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
-// Determine the model URL based on the environment
-const isDevelopment = import.meta.env.DEV;
+import { useModelLoader, preloadModel } from "../utils/ModelLoader";
+
+// Define model URLs
 const localModelUrl = "src/models/fingerFixed-transformed.glb";
-const remoteModelUrl =
-  "https://files.creative-directors.com/creative-website/creative25/glbs/PointingFinger-transformed.glb"; // Corrected remote URL if needed
-const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
+const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/PointingFinger-transformed.glb";
 
 export const PointingFinger = forwardRef((props, ref) => {
   const internalRef = useRef();
-  const { nodes, materials } = useGLTF(modelUrl);
+  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
   const skinMaterial = new NodeToyMaterial({
     url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
   });
@@ -41,4 +40,4 @@ export const PointingFinger = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload(modelUrl);
+preloadModel(localModelUrl, remoteModelUrl);

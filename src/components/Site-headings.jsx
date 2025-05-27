@@ -11,8 +11,8 @@ import React, {
 } from "react";
 import { Float, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-
 import gsap from "gsap";
+import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 
 const isDevelopment = import.meta.env.DEV;
 
@@ -22,7 +22,7 @@ const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/site-headings.glb"; // Corrected remote URL if needed
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 export const CDtext = forwardRef((props, ref) => {
-  const { nodes, materials } = useGLTF(modelUrl);
+  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
 
   // References to all letter meshes
   const letterRefs = useRef([]);
@@ -457,4 +457,4 @@ export const CDtext = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload(modelUrl);
+preloadModel(localModelUrl, remoteModelUrl);

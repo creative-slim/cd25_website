@@ -22,22 +22,16 @@ import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
 import { TextureLoader, MeshStandardMaterial, RepeatWrapping } from "three";
 import { useLoader } from "@react-three/fiber";
+import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 
-// Determine the model URL based on the environment
-const isDevelopment = import.meta.env.DEV;
+// Define model URLs
 const localModelUrl = "src/models/Kreaton_final-transformed.glb";
-const remoteModelUrl =
-  "https://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb"; // Corrected remote URL if needed
-const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
-
-// DEBUG: console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
+const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb";
 
 export const Kreaton = forwardRef((props, ref) => {
-  // Remove local/remote definitions here as they are now outside the component
-
   const internalRef = useRef();
-  // Use the determined modelUrl
-  const { scene, animations } = useGLTF(modelUrl);
+  // Use the ModelLoader utility
+  const { scene, animations } = useModelLoader(localModelUrl, remoteModelUrl);
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes, materials } = useGraph(clone);
 
@@ -392,5 +386,5 @@ export const Kreaton = forwardRef((props, ref) => {
   );
 });
 
-// Use the determined modelUrl for preloading
-useGLTF.preload(modelUrl);
+// Replace the preload at the bottom with the new utility
+preloadModel(localModelUrl, remoteModelUrl);

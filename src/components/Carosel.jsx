@@ -22,6 +22,7 @@ import {
 import { easing } from "maath";
 import "../utils/caroselUtil";
 import { gsap } from "gsap";
+import Portal from './Portal';
 
 // Define the number of cards to display
 const NUM_CARDS_TO_DISPLAY = 6;
@@ -85,6 +86,55 @@ function Carousel({
   });
 }
 
+// Custom shader for morphing between square and circle
+const morphShader = {
+  uniforms: {
+    time: { value: 0 },
+    morphProgress: { value: 0 },
+    imageTexture: { value: null }
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform float time;
+    uniform float morphProgress;
+    uniform sampler2D imageTexture;
+    varying vec2 vUv;
+
+    void main() {
+      // Center the UV coordinates
+      vec2 centeredUv = vUv * 2.0 - 1.0;
+      
+      // Calculate distance from center
+      float dist = length(centeredUv);
+      
+      // Calculate the morphing factor
+      float morphFactor = smoothstep(0.0, 1.0, morphProgress);
+      
+      // Mix between square and circle based on morphFactor
+      float shape = mix(
+        max(abs(centeredUv.x), abs(centeredUv.y)), // Square
+        dist, // Circle
+        morphFactor
+      );
+      
+      // Create the mask
+      float mask = smoothstep(1.0, 0.99, shape);
+      
+      // Sample the texture
+      vec4 texColor = texture2D(imageTexture, vUv);
+      
+      // Apply the mask
+      gl_FragColor = vec4(texColor.rgb, texColor.a * mask);
+    }
+  `
+};
+
 // Accept and call hover handlers
 function Card({
   url,
@@ -96,109 +146,71 @@ function Card({
   ...props
 }) {
   const ref = useRef();
-  const portalRef = useRef();
   const [hovered, hover] = useState(false);
+  const texture = useTexture(url);
+  const [isCircle, setIsCircle] = useState(false);
 
   const pointerOver = (e) => {
     e.stopPropagation();
     hover(true);
     onHoverStart?.();
+    // Animate to circle
+    gsap.to(ref.current.scale, {
+      x: 1.5,
+      y: 1.5,
+      z: 1.5,
+      duration: 1,
+      ease: "power2.out"
+    });
+    setIsCircle(true);
   };
 
   const pointerOut = () => {
     hover(false);
     onHoverEnd?.();
+    // Animate back to square
+    gsap.to(ref.current.scale, {
+      x: 1.3,
+      y: 1.3,
+      z: 1.3,
+      duration: 1,
+      ease: "power2.out"
+    });
+    setIsCircle(false);
   };
-
-  useFrame((state, delta) => {
-    // Animate the main card
-    easing.damp3(ref.current.scale, hovered ? 1.5 : 1.3, 0.1, delta);
-    easing.damp(ref.current.material, "radius", hovered ? 0.25 : 0.1, 0.2, delta);
-    easing.damp(ref.current.material, "zoom", hovered ? 1 : 1.5, 0.2, delta);
-
-    // Animate the portal effect
-    if (portalRef.current) {
-      const time = state.clock.getElapsedTime();
-      portalRef.current.rotation.z = time * 0.2;
-      portalRef.current.children.forEach((ring, i) => {
-        ring.rotation.z = -time * (0.2 + i * 0.1);
-        ring.material.opacity = hovered ? 0.8 : 0.4;
-        ring.scale.x = hovered ? 1.2 : 1;
-        ring.scale.y = hovered ? 1.2 : 1;
-      });
-    }
-  });
 
   return (
     <group {...props}>
-      {/* Portal effect */}
-      <group ref={portalRef}>
-        {/* Outer ring */}
-        <mesh position={[0, 0, -0.01]}>
-          <ringGeometry args={[1.8, 2.0, 64]} />
-          <meshBasicMaterial
-            color="#4a9eff"
-            transparent
-            opacity={0.4}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+      {/* New Rainbow Portal */}
+      <Portal
+        position={[0, 0, -0.01]}
+        scale={[2, 2, 2]}
+        configs={[
+          { radius: 0.48, tube: 0.045, opacity: hovered ? 0.7 : 0.4, speed: 0.5, phase: 0 },
+          { radius: 0.56, tube: 0.025, opacity: hovered ? 0.4 : 0.2, speed: 0.7, phase: 1.0 },
+          { radius: 0.62, tube: 0.012, opacity: hovered ? 0.2 : 0.1, speed: 0.3, phase: 2.0 }
+        ]}
+      />
 
-        {/* Middle ring */}
-        <mesh position={[0, 0, -0.02]}>
-          <ringGeometry args={[1.6, 1.8, 64]} />
-          <meshBasicMaterial
-            color="#00ffaa"
-            transparent
-            opacity={0.4}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Inner ring */}
-        <mesh position={[0, 0, -0.03]}>
-          <ringGeometry args={[1.4, 1.6, 64]} />
-          <meshBasicMaterial
-            color="#ff4a9e"
-
-            transparent
-            opacity={0.4}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-
-        {/* Energy particles */}
-        <points>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={50}
-              array={new Float32Array(50 * 3).map(() => (Math.random() - 0.5) * 4)}
-              itemSize={3}
-            />
-          </bufferGeometry>
-          <pointsMaterial
-            color="#ffffff"
-            size={0.05}
-            transparent
-            opacity={0.6}
-            sizeAttenuation
-          />
-        </points>
-      </group>
-
-      {/* Main image */}
-      <Image
+      {/* Main image with geometry switching */}
+      <mesh
         ref={ref}
-        url={url}
-        transparent
-        side={THREE.DoubleSide}
         onPointerOver={pointerOver}
         onPointerOut={pointerOut}
         userData={{ index, data }}
+        scale={[1.3, 1.3, 1.3]}
       >
-        <bentPlaneGeometry args={[0.1, 1.618, 1, 20, 20]} />
-      </Image>
+        {isCircle ? (
+          <circleGeometry args={[0.5, 64]} />
+        ) : (
+          <planeGeometry args={[1, 1, 1, 1]} />
+        )}
+        <meshBasicMaterial
+          map={texture}
+          transparent
+          side={THREE.DoubleSide}
+        />
+      </mesh>
     </group>
   );
 }

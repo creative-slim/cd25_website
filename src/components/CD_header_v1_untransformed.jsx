@@ -12,10 +12,14 @@ import React, {
 import { useGLTF } from "@react-three/drei";
 import gsap from "gsap";
 import * as THREE from "three";
+import { useModelLoader, preloadModel } from "../utils/ModelLoader";
+
+// Define model URLs
+const localModelUrl = "src/models/CD_header_v1-transformed.glb";
+const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/CD_header_v1-transformed.glb";
+
 export const Header_v1 = forwardRef((props, ref) => {
-  const { nodes, materials } = useGLTF(
-    "src/models/CD_header_v1-transformed.glb"
-  );
+  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
   const groupRef = useRef();
   const goldMeshRefs = useRef([]);
   const whiteMeshRefs = useRef([]);
@@ -197,4 +201,4 @@ export const Header_v1 = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload("src/models/CD_header_v1-transformed.glb");
+preloadModel(localModelUrl, remoteModelUrl);

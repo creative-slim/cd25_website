@@ -17,6 +17,7 @@ import {
   DoubleSide,
   LinearMipmapLinearFilter,
 } from "three";
+import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 
 // Determine the model URL based on the environment
 const isDevelopment = import.meta.env.DEV;
@@ -301,7 +302,7 @@ const WaterMaterial = shaderMaterial(
 extend({ WaterMaterial });
 
 export const Earth2 = forwardRef((props, ref) => {
-  const { nodes, materials } = useGLTF(modelUrl);
+  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
 
   // const oceanTexture = useTexture("/seamless_ocean.png"); // Not used in the new shader
   // const matcapTexture = useTexture("/matcap_ocean.png"); // Not used in the new shader
@@ -453,4 +454,4 @@ export const Earth2 = forwardRef((props, ref) => {
   );
 });
 
-useGLTF.preload(modelUrl);
+preloadModel(localModelUrl, remoteModelUrl);
