@@ -30,8 +30,8 @@ import { Clump } from "./Clump";
 import { Kreaton } from "./Kreaton_A";
 import { Earth2 } from "./Earthv4_UV";
 import { PointingFinger } from "./PointingFinger";
-import { CDtext } from "./Site-headings";
-import { NewFont } from "./FontWorkWebpage";
+// import { CDtext } from "./Site-headings";
+// import { NewFont } from "./FontWorkWebpage";
 import { Header_v1 } from "./CD_header_v1_untransformed";
 
 const isDevelopment = import.meta.env.DEV;
