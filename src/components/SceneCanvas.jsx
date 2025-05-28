@@ -3,20 +3,20 @@ import { OrbitControls, Environment, Stars, Center } from "@react-three/drei";
 import { Suspense } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
-import { Perf } from "r3f-perf";
+// import { Perf } from "r3f-perf";
 import { useControls, Leva, folder } from "leva";
 
 import {
   Bloom,
   DepthOfField,
   EffectComposer,
-  LensFlare,
+  // LensFlare,
   Noise,
   SMAA,
   SSAO,
   Vignette,
   ChromaticAberration,
-  ColorAverage,
+  // ColorAverage,
   Glitch,
   HueSaturation,
   Pixelation,

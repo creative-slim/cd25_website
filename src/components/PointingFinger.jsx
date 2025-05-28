@@ -11,7 +11,7 @@ import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 
 // Define model URLs
 const localModelUrl = "src/models/fingerFixed-transformed.glb";
-const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/PointingFinger-transformed.glb";
+const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/fingerFixed-transformed.glb";
 
 export const PointingFinger = forwardRef((props, ref) => {
   const internalRef = useRef();
