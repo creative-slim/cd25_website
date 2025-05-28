@@ -39,7 +39,7 @@ export const Kreaton = forwardRef((props, ref) => {
   //   url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
   // });
   // Load the texture
-  const skinTexture = useLoader(TextureLoader, "/seamless_skin.png");
+  const skinTexture = useLoader(TextureLoader, "https://files.creative-directors.com/creative-website/creative25/textures/seamless_skin.jpeg");
   // Configure texture wrapping for seamless animation
   useEffect(() => {
     if (skinTexture) {
