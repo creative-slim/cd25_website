@@ -155,6 +155,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             position={[-0.2, -0.7, 2.4]}
             rotation={[0, 0, 0]}
             visible={false}
+
           />
 
           <Center position={[0, 2, 0]}>

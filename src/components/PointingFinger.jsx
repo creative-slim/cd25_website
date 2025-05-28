@@ -5,8 +5,6 @@ Files: ./public/PointingFinger.glb [9.64MB] > /Users/slim-cd/Documents/_Projects
 */
 
 import React, { useRef, forwardRef, useImperativeHandle } from "react";
-import { useGLTF } from "@react-three/drei";
-import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
 import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
@@ -18,10 +16,7 @@ const remoteModelUrl = "https://files.creative-directors.com/creative-website/cr
 export const PointingFinger = forwardRef((props, ref) => {
   const internalRef = useRef();
   const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
-  const skinMaterial = new NodeToyMaterial({
-    url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
-  });
-  materials.Skin = skinMaterial;
+
   materials.gold = kreatonGoldMaterial;
   materials.white = kreatonArmorMaterial;
 
@@ -33,8 +28,8 @@ export const PointingFinger = forwardRef((props, ref) => {
       <group position={[0.138, 1.32, -0.31]} rotation={[0.304, 0.042, -1.15]}>
         <mesh geometry={nodes.Armsmesh.geometry} material={materials.white} />
         <mesh geometry={nodes.Armsmesh_1.geometry} material={materials.gold} />
-        <mesh geometry={nodes.Armsmesh_2.geometry} material={skinMaterial} />
-        <mesh geometry={nodes.Armsmesh_3.geometry} material={skinMaterial} />
+        <mesh geometry={nodes.Armsmesh_2.geometry} />
+        <mesh geometry={nodes.Armsmesh_3.geometry} />
       </group>
     </group>
   );
