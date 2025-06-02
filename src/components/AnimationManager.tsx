@@ -632,11 +632,6 @@ export function AnimationManager({
           console.log("YOOOOOOOOOOo");
           rotatorX(1);
           rotatorCameraSetup();
-          if (clumpRef.current) {
-            logRef.current("animation", "Activating clump particles");
-            clumpRef.current.setActive(true);
-            clumpRef.current.toggleShield(true);
-          }
           if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
@@ -731,66 +726,73 @@ export function AnimationManager({
             { x: 0, y: 1.5, z: 0 },
             { duration: 1, ease: "power2.inOut" }
           );
+          rotatorRef.current.setVisibility(false);
 
+          // Activate clump first
+          if (clumpRef.current) {
+            logRef.current("animation", "Activating clump particles in Section 4");
+            clumpRef.current.setVisibility(true); // Make clump visible
+            clumpRef.current.setActive(true);
+            clumpRef.current.toggleShield(true);
+          }
+
+          // Delay the push animation and explosion
           if (kreatonRef.current && !hasPushedRef.current) {
-            logRef.current("model", "PLAYING ANIMATION PUSH (first time only)");
+            logRef.current("model", "Scheduling PUSH animation with delay");
             hasPushedRef.current = true;
-            const currentAnimations = kreatonRef.current.getAnimationNames(); // Renamed from 'animations' to avoid conflict
-            if (currentAnimations.includes("PUSH")) {
-              kreatonRef.current.transitionFromCurrentToAnimation("PUSH", {
-                crossFadeTime: 0.5,
-                fadeInDuration: 0.3,
-                loopOnce: true,
-                onComplete: () => {
-                  logRef.current("model", "PUSH animation completed");
-                },
-              });
-              const pushAction = kreatonRef.current.actions["PUSH"];
-              const animationDuration = pushAction
-                ? pushAction.getClip().duration
-                : 1.5;
-              logRef.current(
-                "system",
-                `PUSH animation duration: ${animationDuration}s`
-              );
-              explosionTimeoutRef.current = setTimeout(() => {
-                if (clumpRef.current) {
-                  logRef.current(
-                    "animation",
-                    "Triggering permanent explosion at end of PUSH animation"
-                  );
-                  clumpRef.current.permanentExplosion(300);
-                  stopEarthRotation();
-                }
-                explosionTimeoutRef.current = null;
-                if (currentAnimations.includes("IDLE")) {
-                  logRef.current(
-                    "model",
-                    "Transitioning from PUSH to IDLE animation"
-                  );
-                  kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-                    crossFadeTime: 0.5,
-                    fadeInDuration: 0.3,
-                  });
-                }
-              }, 1800);
-            } else {
-              logRef.current(
-                "error",
-                "PUSH animation not found! Using fallback."
-              );
-              explosionTimeoutRef.current = setTimeout(() => {
-                if (clumpRef.current) {
-                  logRef.current(
-                    "animation",
-                    "Triggering fallback permanent explosion"
-                  );
-                  clumpRef.current.permanentExplosion(300);
-                  stopEarthRotation();
-                }
-                explosionTimeoutRef.current = null;
-              }, 1500);
-            }
+            const currentAnimations = kreatonRef.current.getAnimationNames();
+
+            // Delay the push animation by 1 second
+            setTimeout(() => {
+              if (currentAnimations.includes("PUSH")) {
+                logRef.current("model", "Playing PUSH animation");
+                kreatonRef.current.transitionFromCurrentToAnimation("PUSH", {
+                  crossFadeTime: 0.5,
+                  fadeInDuration: 0.3,
+                  loopOnce: true,
+                  onComplete: () => {
+                    logRef.current("model", "PUSH animation completed");
+                  },
+                });
+
+                // Delay the explosion to sync with the push animation
+                const pushAction = kreatonRef.current.actions["PUSH"];
+                const animationDuration = pushAction ? pushAction.getClip().duration : 1.5;
+
+                // Trigger explosion near the end of the push animation
+                explosionTimeoutRef.current = setTimeout(() => {
+                  if (clumpRef.current) {
+                    logRef.current("animation", "Triggering permanent explosion");
+                    clumpRef.current.permanentExplosion(300);
+                    stopEarthRotation();
+                    // Hide clump after explosion
+                    clumpRef.current.setVisibility(false);
+                  }
+                  explosionTimeoutRef.current = null;
+
+                  // Transition to IDLE after explosion
+                  if (currentAnimations.includes("IDLE")) {
+                    logRef.current("model", "Transitioning to IDLE animation");
+                    kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
+                      crossFadeTime: 0.5,
+                      fadeInDuration: 0.3,
+                    });
+                  }
+                }, animationDuration * 1000 * 0.7); // Trigger at 70% of push animation
+              } else {
+                logRef.current("error", "PUSH animation not found! Using fallback.");
+                explosionTimeoutRef.current = setTimeout(() => {
+                  if (clumpRef.current) {
+                    logRef.current("animation", "Triggering fallback permanent explosion");
+                    clumpRef.current.permanentExplosion(300);
+                    stopEarthRotation();
+                    // Hide clump after explosion
+                    clumpRef.current.setVisibility(false);
+                  }
+                  explosionTimeoutRef.current = null;
+                }, 1500);
+              }
+            }, 1000); // 1 second delay before push animation
           } else if (hasPushedRef.current) {
             logRef.current("model", "PUSH animation already played, skipping");
           }
@@ -806,23 +808,18 @@ export function AnimationManager({
             { duration: 1, ease: "power2.inOut" }
           );
           rotatorX(1);
-          const currentAnimations =
-            kreatonRef.current?.getAnimationNames() || []; // Ensure kreatonRef.current exists
+          rotatorRef.current.setVisibility(true);
+          const currentAnimations = kreatonRef.current?.getAnimationNames() || [];
           if (kreatonRef.current && currentAnimations.includes("IDLE")) {
-            logRef.current(
-              "model",
-              "REVERSE: Reverting to IDLE (leaving Section 4 backwards)"
-            );
+            logRef.current("model", "REVERSE: Reverting to IDLE (leaving Section 4 backwards)");
             kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
               crossFadeTime: 0.5,
               fadeInDuration: 0.5,
             });
           }
           if (clumpRef.current && !clumpRef.current.isActive) {
-            logRef.current(
-              "animation",
-              "Re-activating clump particles (leaving Section 4 backwards)"
-            );
+            logRef.current("animation", "Re-activating clump particles (leaving Section 4 backwards)");
+            clumpRef.current.setVisibility(true); // Make clump visible again
             clumpRef.current.setActive(true);
             clumpRef.current.toggleShield(true);
           }

@@ -201,9 +201,9 @@ function Card({
         scale={[1.3, 1.3, 1.3]}
       >
         {isCircle ? (
-          <circleGeometry args={[0.5, 64]} />
+          <circleGeometry args={[0.65, 64]} />
         ) : (
-          <planeGeometry args={[1, 1, 1, 1]} />
+          <circleGeometry args={[0.65, 64]} />
         )}
         <meshBasicMaterial
           map={texture}
@@ -218,7 +218,9 @@ function Card({
 export const Rotator = forwardRef(({ ...props }, ref) => {
   const [carouselData, setCarouselData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(true);
   const carouselRef = useRef();
+  const opacityRef = useRef(1); // Add opacity ref for GSAP animation
   const isDraggingRef = useRef(false);
   const prevXRef = useRef(0);
   const velocityRef = useRef(0); // Ref to store rotation velocity
@@ -387,6 +389,51 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
   // Expose methods to parent components via ref
   useImperativeHandle(ref, () => ({
+    // Add visibility control method with fade effect
+    setVisibility: (visible, options = {}) => {
+      const {
+        duration = 0.5,
+        ease = "power2.inOut",
+        onStart,
+        onComplete
+      } = options;
+
+      setIsVisible(visible);
+
+      if (carouselRef.current) {
+        // Kill any existing opacity animations
+        gsap.killTweensOf(opacityRef);
+
+        // Animate opacity
+        gsap.to(opacityRef, {
+          current: visible ? 1 : 0,
+          duration,
+          ease,
+          onStart: () => {
+            if (onStart) onStart();
+          },
+          onUpdate: () => {
+            if (carouselRef.current) {
+              carouselRef.current.visible = true; // Keep visible during fade
+              carouselRef.current.traverse((child) => {
+                if (child.isMesh) {
+                  child.material.opacity = opacityRef.current;
+                  child.material.transparent = true;
+                }
+              });
+            }
+          },
+          onComplete: () => {
+            if (carouselRef.current) {
+              carouselRef.current.visible = visible; // Set final visibility
+              if (onComplete) onComplete();
+            }
+          }
+        });
+      }
+    },
+    // Get current visibility state
+    isVisible: () => isVisible,
     // Move the carousel to a specific Y position
     moveY: (y, options = {}) => {
       if (carouselRef.current) {
@@ -580,6 +627,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
       ref={carouselRef}
       {...props}
       onPointerDown={handlePointerDown} // Only pointer down is needed here
+      visible={isVisible} // Add visibility prop
     >
       {/* Only render Carousel when data is loaded */}
       {!isLoading && (

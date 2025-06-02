@@ -138,12 +138,14 @@ export function SceneCanvas({ scrollContainerRef }) {
           {/* <Perf position="top-left" /> */}
 
           <Stars
-            radius={100} // Radius of the inner sphere (default=100)
-            depth={50} // Depth of area where stars should form (default=50)
-            count={5000} // Amount of stars (default=5000)
+            radius={100}
+            depth={50}
+            count={5000}
           />
 
           {/* <OrbitControls /> */}
+
+          <primitive object={new THREE.AxesHelper(5)} />
 
           <Environment files={modelUrl} />
           <ambientLight intensity={0.1} />
@@ -154,7 +156,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             ref={pointingFingerRef}
             position={[-0.2, -0.7, 2.4]}
             rotation={[0, 0, 0]}
-            visible={false}
+            visible={true}
 
           />
 

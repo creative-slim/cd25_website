@@ -10,11 +10,12 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
+import { gsap } from "gsap";
 
 const rfs = THREE.MathUtils.randFloatSpread;
 
 const NUM_INSTANCES = 500;
-const INSTANCES_INITIAL_DISTACE = 1000;
+const INSTANCES_INITIAL_DISTACE = 300;
 const INSTANCE_SIZE = 0.5;
 
 const sphereGeometry = new THREE.DodecahedronGeometry(INSTANCE_SIZE, 0);
@@ -57,7 +58,7 @@ export const Clump = forwardRef(
   ) => {
     const [sphereRef, sphereApi] = useSphere(() => ({
       args: [1],
-      mass: 0.5,
+      mass: 0.2,
       angularDamping: 0.5,
       linearDamping: 0.999,
       gravity: [0, 0, 0], // Set gravity to zero
@@ -74,13 +75,94 @@ export const Clump = forwardRef(
     const [shimmer, setShimmer] = useState(0);
     const [active, setActive] = useState(false); // Start inactive until triggered
     const [isPermanentlyExploded, setPermanentlyExploded] = useState(false); // Track permanent explosion state
+    const opacityObj = useRef({ value: 1 }); // Use object for GSAP
+    const shimmerObj = useRef({ value: 0 }); // Use object for GSAP
 
     // Expose methods to AnimationManager via ref
     useImperativeHandle(ref, () => ({
-      // Toggle the shield visibility
-      toggleShield: (show = true) => {
-        setVisible(show);
-        if (show) setShimmer(0); // Reset shimmer when showing
+      // Add visibility control method with fade effect
+      setVisibility: (visible, options = {}) => {
+        const {
+          duration = 0.5,
+          ease = "power2.inOut",
+          delay = 0,
+          onStart,
+          onComplete
+        } = options;
+
+        if (internalRef.current) {
+          gsap.to(opacityObj.current, {
+            value: visible ? 1 : 0,
+            duration,
+            delay,
+            ease,
+            onStart: () => {
+              if (onStart) onStart();
+              internalRef.current.visible = true; // Keep visible during fade
+            },
+            onUpdate: () => {
+              if (internalRef.current) {
+                internalRef.current.traverse((child) => {
+                  if (child.isMesh) {
+                    child.material.opacity = opacityObj.current.value;
+                    child.material.transparent = true;
+                  }
+                });
+              }
+            },
+            onComplete: () => {
+              if (internalRef.current) {
+                internalRef.current.visible = visible; // Set final visibility
+                if (onComplete) onComplete();
+              }
+            }
+          });
+        }
+        return visible;
+      },
+
+      // Toggle the shield visibility with fade
+      toggleShield: (show = true, options = {}) => {
+        const {
+          duration = 0.5,
+          ease = "power2.inOut",
+          delay = 0
+        } = options;
+
+        // Don't show shield if permanently exploded
+        if (isPermanentlyExploded) {
+          gsap.to(shimmerObj.current, {
+            value: 0,
+            duration,
+            ease,
+            delay,
+            onUpdate: () => setShimmer(shimmerObj.current.value),
+            onComplete: () => setVisible(false)
+          });
+          return false;
+        }
+
+        if (show) {
+          shimmerObj.current.value = 0;
+          setShimmer(0);
+          gsap.to(shimmerObj.current, {
+            value: 1,
+            duration,
+            ease,
+            delay,
+            onStart: () => setVisible(true),
+            onUpdate: () => setShimmer(shimmerObj.current.value)
+          });
+        } else {
+          gsap.to(shimmerObj.current, {
+            value: 0,
+            duration,
+            ease,
+            delay,
+            onUpdate: () => setShimmer(shimmerObj.current.value),
+            onComplete: () => setVisible(false)
+          });
+        }
         return show;
       },
 
@@ -112,7 +194,7 @@ export const Clump = forwardRef(
         return true;
       },
 
-      // Fix the permanentExplosion method by not using 'this'
+      // Fix the permanentExplosion method with delayed visibility changes
       permanentExplosion: (force = 200) => {
         if (!sphereRef.current) return false;
 
@@ -134,10 +216,42 @@ export const Clump = forwardRef(
 
         // Mark as permanently exploded
         setPermanentlyExploded(true);
-        setActive(false); // Turn off normal physics
+        setActive(false);
 
-        // Hide shield
-        setVisible(false);
+        // Fade out shield with delay
+        gsap.to(shimmerObj.current, {
+          value: 0,
+          duration: 0.5,
+          delay: 0.3,
+          ease: "power2.inOut",
+          onUpdate: () => setShimmer(shimmerObj.current.value),
+          onComplete: () => setVisible(false)
+        });
+
+        // Fade out entire clump with longer delay
+        if (internalRef.current) {
+          gsap.to(opacityObj.current, {
+            value: 0,
+            duration: 1,
+            delay: 0.8,
+            ease: "power2.inOut",
+            onUpdate: () => {
+              if (internalRef.current) {
+                internalRef.current.traverse((child) => {
+                  if (child.isMesh) {
+                    child.material.opacity = opacityObj.current.value;
+                    child.material.transparent = true;
+                  }
+                });
+              }
+            },
+            onComplete: () => {
+              if (internalRef.current) {
+                internalRef.current.visible = false;
+              }
+            }
+          });
+        }
 
         return true;
       },
