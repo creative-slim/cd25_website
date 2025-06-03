@@ -25,6 +25,7 @@ export const Header_v1 = forwardRef((props, ref) => {
   const whiteMeshRefs = useRef([]);
   const timelineGoldRef = useRef(null);
   const timelineWhiteRef = useRef(null);
+  const pointLightRef = useRef();
 
   // // Setup gold and white materials for animation (if not already)
   // useEffect(() => {
@@ -161,6 +162,7 @@ export const Header_v1 = forwardRef((props, ref) => {
     //   <mesh geometry={nodes.WhiteFont_OnTop.geometry} material={materials.white} position={[-0.261, 0.058, 0.004]} rotation={[Math.PI / 2, 0, 0]} />
     // </group>
     <group {...props} dispose={null} ref={groupRef}>
+
       {Object.keys(nodes)
         .filter((key) => key.startsWith("Gold_") || key.startsWith("R_"))
         .map((key, i) => (

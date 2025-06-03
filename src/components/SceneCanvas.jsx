@@ -33,6 +33,8 @@ import { PointingFinger } from "./PointingFinger";
 // import { CDtext } from "./Site-headings";
 // import { NewFont } from "./FontWorkWebpage";
 import { Header_v1 } from "./CD_header_v1_untransformed";
+import AnimatedStars from "./AnimatedStars";
+import ShootingStars from "./ShootingStars";
 
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "/artist_workshop_4k.hdr";
@@ -118,7 +120,7 @@ export function SceneCanvas({ scrollContainerRef }) {
 
   return (
     <Suspense fallback={<div>Loading 3D scene...</div>}>
-      <Leva collapsed={false} />
+      <Leva collapsed={true} />
       <Canvas
         gl={{
           alpha: true,
@@ -137,15 +139,16 @@ export function SceneCanvas({ scrollContainerRef }) {
         <Suspense fallback={null}>
           {/* <Perf position="top-left" /> */}
 
-          <Stars
+          <AnimatedStars
             radius={100}
             depth={50}
             count={5000}
           />
+          <ShootingStars />
 
           {/* <OrbitControls /> */}
 
-          <primitive object={new THREE.AxesHelper(5)} />
+          {/* <primitive object={new THREE.AxesHelper(5)} /> */}
 
           <Environment files={modelUrl} />
           <ambientLight intensity={0.1} />
@@ -156,7 +159,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             ref={pointingFingerRef}
             position={[-0.2, -0.7, 2.4]}
             rotation={[0, 0, 0]}
-            visible={true}
+            visible={false}
 
           />
 
@@ -166,6 +169,7 @@ export function SceneCanvas({ scrollContainerRef }) {
               scale={10}
             // rotation={[Math.PI / 2, 0, 0]}
             />
+
           </Center>
 
           <Physics>

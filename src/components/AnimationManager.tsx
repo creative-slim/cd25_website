@@ -580,20 +580,41 @@ export function AnimationManager({
           setCameraTarget(
             { x: 0, y: 1.5, z: 0 },
             { duration: 1, ease: "sine.inOut" }
-          );
-          setCameraPosition(
-            { x: 0, y: 0.5, z: 4 },
-            { duration: 1, ease: "sine.inOut" }
-          );
+          ); // to be verified
+
+
+          // setCameraPosition(
+          //   { x: 0, y: 0.5, z: 4 },
+          //   { duration: 1, ease: "sine.inOut" }
+          // );
         },
       });
 
       function rotatorCameraSetup(bottomUp = false) {
         if (bottomUp) {
-          setCameraPosition(
-            { x: 0, y: 1, z: 2 },
-            { duration: 1, ease: "power3.inOut" }
-          );
+          // setCameraPosition(
+          //   { x: 0, y: 1, z: 2 },
+          //   { duration: 1, ease: "power3.inOut" }
+          // );
+          const cameraSequence = gsap.timeline(); // This timeline will be cleaned up by useGSAP
+          cameraSequence
+            .to(camera.position, {
+              x: 2,
+              y: 1,
+              z: 2,
+              duration: 0.5,
+              ease: "power3.in",
+            })
+            .to(camera.position, {
+              x: 0,
+              y: 1,
+              z: 2,
+              duration: 0.5,
+              ease: "power3.out",
+            });
+
+          cameraSequence.play();
+
         } else {
           const cameraSequence = gsap.timeline(); // This timeline will be cleaned up by useGSAP
           cameraSequence
@@ -611,6 +632,7 @@ export function AnimationManager({
               duration: 0.5,
               ease: "power3.inOut",
             });
+          cameraSequence.play();
         }
         setCameraTarget(
           { x: 0, y: 1, z: 5 },
@@ -651,10 +673,11 @@ export function AnimationManager({
             });
           rotatorX(20);
           setFOV(DEFAULT_FOV);
-          setCameraTarget(
-            { x: 0, y: 1, z: 0 },
-            { duration: 1, ease: "power2.inOut" }
-          );
+          // setCameraTarget(
+          //   { x: 0, y: 1, z: 0 },
+          //   { duration: 1, ease: "power2.inOut" }
+          // );
+          rotatorCameraSetup(true);
           logRef.current(
             "model",
             "REVERSE: Reverting to SALUTE (leaving Section 2 backwards)"
@@ -733,7 +756,7 @@ export function AnimationManager({
             logRef.current("animation", "Activating clump particles in Section 4");
             clumpRef.current.setVisibility(true); // Make clump visible
             clumpRef.current.setActive(true);
-            clumpRef.current.toggleShield(true);
+            // clumpRef.current.toggleShield(true);
           }
 
           // Delay the push animation and explosion
