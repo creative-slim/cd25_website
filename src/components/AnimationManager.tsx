@@ -15,6 +15,7 @@ const DEBUG_LOGS = true;
 // FOV Constants
 const DEFAULT_FOV = 55;
 const WIDE_FOV = 70;
+const ZOOM_FOV = 40;
 
 // Enhanced logging with color coding
 const logStyles = {
@@ -437,11 +438,19 @@ export function AnimationManager({
       initializedRef.current = true; // Only set after modelReady is true
       console.log("AnimationManager: useGSAP running, modelReady is true, initializing timeline.");
 
+      function kreatonTransitionFromCurrentToAnimation(animation: string) {
+        kreatonRef.current.transitionFromCurrentToAnimation(animation, {
+          crossFadeTime: 0.8,
+          fadeInDuration: 0.3,
+        });
+      }
+
       // Create the main timeline
       const mainTimeline = gsap.timeline({
         smoothChildTiming: true,
         autoRemoveChildren: false,
         paused: false, // Start timeline immediately
+        delay: 0.5,
       });
       mainTimelineRef.current = mainTimeline; // Assign to ref
       updateLogger(mainTimeline); // Initialize logger with the timeline
@@ -477,120 +486,11 @@ export function AnimationManager({
         const jumpWalkTimeout = setTimeout(() => startEarthRotation(), 2400);
       }
 
-      /*
-      Section 0 - Introduction/Walking
-      */
-      createSectionTimeline("section-0", {
-        end: "bottom 80%",
-        onEnter: () => {
-          // Only start walking if we haven't played the initial animation
-          if (!initialAnimationPlayedRef.current) {
-            logRef.current("model", "PLAYING ANIMATION current->WALKING");
-            initialAnimationPlayedRef.current = true;
-            kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
-              crossFadeTime: 0.8,
-              fadeInDuration: 0.3,
-            });
-            startEarthRotation();
-            setCameraTarget({ x: 0, y: 1, z: 0 }, { duration: 1 });
-          }
-        },
-        onLeaveBack: () => {
-          logRef.current(
-            "model",
-            "REVERSE: Reverting from SALUTE to WALKING (leaving Section 0 backwards)"
-          );
-          kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
-            crossFadeTime: 0.8,
-            fadeInDuration: 0.3,
-          });
-          startEarthRotation();
-          setCameraTarget(
-            { x: 0, y: 1, z: 0 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-          setCameraPosition(
-            { x: 0, y: 0.5, z: 4 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-        },
-        onUpdate: (self) => {
-          logRef.current(
-            "scrollTrigger",
-            `Intro progress: ${self.progress.toFixed(2)}`
-          );
-        },
-        onEnterBack: () => {
-          setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-          setCameraPosition(
-            { x: 0, y: 0.5, z: 4 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-          if (cdTextRef?.current) {
-            logRef.current("animation", "Playing CDtext intro animation");
-            cdTextRef.current.moveUp();
-            cdTextRef.current.show();
-          }
-        },
-        onLeave: () => {
-          if (cdTextRef?.current) {
-            logRef.current("animation", "Playing CDtext intro animation");
-            cdTextRef.current.moveUp(10);
-            cdTextRef.current.hide();
-          }
-        },
-      });
-
-      /*
-      Section 1 - Salute Animation
-      */
-      createSectionTimeline("section-1", {
-        onEnter: () => {
-          setCameraPosition(
-            { x: 0, y: 0.5, z: 4 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-          setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-          logRef.current("model", "PLAYING ANIMATION current->SALUTE");
-          kreatonRef.current.transitionFromCurrentToAnimation("SALUTE", {
-            crossFadeTime: 0.8,
-            fadeInDuration: 0.3,
-          });
-          stopEarthRotation();
-        },
-        onLeaveBack: () => {
-          logRef.current("model", "REVERSE: Reverting from SALUTE to WALKING");
-          kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
-            crossFadeTime: 0.8,
-            fadeInDuration: 0.3,
-          });
-          startEarthRotation();
-          setCameraTarget(
-            { x: 0, y: 1, z: 0 },
-            { duration: 1, ease: "sine.inOut" }
-          );
-        },
-        onEnterBack: () => {
-          setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
-            { duration: 1, ease: "sine.inOut" }
-          ); // to be verified
-
-
-          // setCameraPosition(
-          //   { x: 0, y: 0.5, z: 4 },
-          //   { duration: 1, ease: "sine.inOut" }
-          // );
-        },
-      });
-
       function rotatorCameraSetup(bottomUp = false) {
+        setCameraTarget(
+          { x: 0, y: 1, z: 5 },
+          { duration: 1, ease: "power2.inOut" }
+        );
         if (bottomUp) {
           // setCameraPosition(
           //   { x: 0, y: 1, z: 2 },
@@ -600,17 +500,17 @@ export function AnimationManager({
           cameraSequence
             .to(camera.position, {
               x: 2,
-              y: 1,
+              y: 1.5,
               z: 2,
               duration: 0.5,
-              ease: "power3.in",
+              ease: "power3.inOut",
             })
             .to(camera.position, {
               x: 0,
-              y: 1,
+              y: 1.5,
               z: 2,
               duration: 0.5,
-              ease: "power3.out",
+              ease: "power3.inOut",
             });
 
           cameraSequence.play();
@@ -634,10 +534,7 @@ export function AnimationManager({
             });
           cameraSequence.play();
         }
-        setCameraTarget(
-          { x: 0, y: 1, z: 5 },
-          { duration: 1.0, ease: "power2.inOut" }
-        );
+
         setFOV(WIDE_FOV);
       }
 
@@ -645,33 +542,184 @@ export function AnimationManager({
         clumpRef.current.setActive(false);
       }
 
+
+
+
+
+      /*
+      Section 0 - Introduction/Walking
+      */
+      createSectionTimeline("section-0", {
+        end: "bottom 80%",
+        onEnter: () => {
+          console.log(" --------section 0 onEnter");
+          // Only start walking if we haven't played the initial animation
+          if (!initialAnimationPlayedRef.current) {
+            logRef.current("model", "PLAYING ANIMATION current->WALKING");
+            initialAnimationPlayedRef.current = true;
+            kreatonTransitionFromCurrentToAnimation("WALKING");
+            startEarthRotation();
+            setCameraTarget({ x: 0, y: 1, z: 0 }, { duration: 1 });
+            setCameraPosition({ x: 0, y: 0.5, z: 4 }, { duration: 1 });
+          }
+        },
+
+        onLeave: () => {
+          console.log(" --------section 0 onLeave");
+          if (cdTextRef?.current) {
+            logRef.current("animation", "Playing CDtext intro animation");
+            cdTextRef.current.moveUp(10);
+            cdTextRef.current.hide();
+          }
+
+        },
+        onEnterBack: () => {
+          console.log(" -------- section 0 onEnterBack");
+          setCameraTarget(
+            { x: 0, y: 1.5, z: 0 },
+            { duration: 1, ease: "sine.inOut" }
+          );
+          setCameraPosition(
+            { x: 0, y: 0.5, z: 4 },
+            { duration: 1, ease: "sine.inOut" }
+          );
+          if (cdTextRef?.current) {
+            logRef.current("animation", "Playing CDtext intro animation");
+            cdTextRef.current.resetAnimation();
+            cdTextRef.current.moveUp();
+            cdTextRef.current.show();
+          }
+        },
+
+        // onLeaveBack: () => {
+        //   logRef.current(
+        //     "model",
+        //     "REVERSE: Reverting from SALUTE to WALKING (leaving Section 0 backwards)"
+        //   );
+        //   kreatonRef.current.transitionFromCurrentToAnimation("WALKING", {
+        //     crossFadeTime: 0.8,
+        //     fadeInDuration: 0.3,
+        //   });
+        //   startEarthRotation();
+        //   setCameraTarget(
+        //     { x: 0, y: 1, z: 0 },
+        //     { duration: 1, ease: "sine.inOut" }
+        //   );
+        //   setCameraPosition(
+        //     { x: 0, y: 0.5, z: 4 },
+        //     { duration: 1, ease: "sine.inOut" }
+        //   );
+        // },
+
+        onUpdate: (self) => {
+          logRef.current(
+            "scrollTrigger",
+            `Intro progress: ${self.progress.toFixed(2)}`
+          );
+        },
+
+
+      });
+
+      /*
+      Section 1 - Salute Animation
+      */
+      createSectionTimeline("section-1", {
+        onEnter: () => {
+          console.log(" --------section 1 onEnter");
+          setCameraPosition(
+            { x: 0, y: 0.5, z: 4 },
+            { duration: 1, ease: "sine.inOut" }
+          );
+          setCameraTarget(
+            { x: 0, y: 1.5, z: 0 },
+            { duration: 1, ease: "sine.inOut" }
+          );
+          setFOV(ZOOM_FOV);
+          logRef.current("model", "PLAYING ANIMATION current->SALUTE");
+          kreatonTransitionFromCurrentToAnimation("SALUTE");
+          stopEarthRotation();
+        },
+        onLeaveBack: () => {
+          console.log(" --------section 1 onLeaveBack");
+          logRef.current("model", "REVERSE: Reverting from SALUTE to WALKING");
+          kreatonTransitionFromCurrentToAnimation("WALKING");
+          startEarthRotation();
+          // setCameraTarget( DELETE
+          //   { x: 0, y: 1, z: 0 },
+          //   { duration: 1, ease: "sine.inOut" }
+          // );
+          setFOV(DEFAULT_FOV);
+        },
+        onEnterBack: () => {
+          console.log(" --------section 1 onEnterBack");
+          setCameraTarget(
+            { x: 0, y: 1.5, z: 0 },
+            { duration: 1, ease: "sine.inOut" }
+          ); // to be verified
+
+          setCameraPosition(
+            { x: 0, y: 0.5, z: 4 },
+            { duration: 1, ease: "sine.inOut" }
+          );
+
+          // const cameraSequence = gsap.timeline(); // Cleaned up by useGSAP
+          // cameraSequence
+          //   .to(camera.position, {
+          //     x: 2,
+          //     y: 0.5,
+          //     z: 4,
+          //     duration: 0.5,
+          //     ease: "power3.inOut",
+          //   })
+          //   .to(camera.position, {
+          //     x: 0,
+          //     y: 0.5,
+          //     z: 4,
+          //     duration: 0.5,
+          //     ease: "power3.inOut",
+          //   });
+
+          setFOV(ZOOM_FOV);
+        },
+      });
+
       /*
       Section 2 - Rotation Sequence
       */
       createSectionTimeline("section-2", {
         onEnter: () => {
+          console.log(" --------section 2 onEnter");
           logRef.current("scrollTrigger", "Transitioning to carousel view");
-          console.log("YOOOOOOOOOOo");
           rotatorX(1);
+          rotatorRef.current.setVisibility(true);
           rotatorCameraSetup();
+          // setCameraTarget(
+          //   { x: 0, y: 1, z: 5 },
+          //   { duration: 1.0, ease: "power2.inOut" }
+          // );
+          // setFOV(WIDE_FOV);
           if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
         },
         onLeaveBack: () => {
-          const cameraSequence = gsap.timeline(); // Cleaned up by useGSAP
-          cameraSequence
-            .to(camera.position, {
-              x: 2,
-              duration: 0.5,
-              ease: "power3.inOut",
-            })
-            .to(camera.position, {
-              x: 0,
-              duration: 0.5,
-              ease: "power3.inOut",
-            });
+          console.log(" --------section 2 onLeaveBack");
+          // const cameraSequence = gsap.timeline(); // Cleaned up by useGSAP
+          // cameraSequence
+          //   .to(camera.position, {
+          //     x: 2,
+          //     duration: 0.5,
+          //     ease: "power3.inOut",
+          //   })
+          //   .to(camera.position, {
+          //     x: 0,
+          //     duration: 0.5,
+          //     ease: "power3.inOut",
+          //   });
           rotatorX(20);
+          rotatorRef.current.setVisibility(false);
+
           setFOV(DEFAULT_FOV);
           // setCameraTarget(
           //   { x: 0, y: 1, z: 0 },
@@ -682,13 +730,11 @@ export function AnimationManager({
             "model",
             "REVERSE: Reverting to SALUTE (leaving Section 2 backwards)"
           );
-          kreatonRef.current.transitionFromCurrentToAnimation("SALUTE", {
-            crossFadeTime: 0.8,
-            fadeInDuration: 0.3,
-          });
+          kreatonTransitionFromCurrentToAnimation("SALUTE");
           stopEarthRotation();
         },
         onEnterBack: () => {
+          console.log(" --------section 2 onEnterBack");
           // setFOV(55); // This was commented out, keeping it so
         },
       });
@@ -698,11 +744,13 @@ export function AnimationManager({
       */
       createSectionTimeline("section-3", {
         onEnter: () => {
+          console.log(" --------section 3 onEnter");
           if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
         },
         onLeaveBack: () => {
+          console.log(" --------section 3 onLeaveBack");
           if (clumpRef.current && clumpRef.current.isActive) {
             logRef.current(
               "animation",
@@ -721,17 +769,27 @@ export function AnimationManager({
           });
         },
         onLeave: () => {
-          if (clumpRef.current && clumpRef.current.isActive) {
-            clumpRef.current.setActive(false);
-            clumpRef.current.toggleShield(false);
-          }
+          console.log(" --------section 3 onLeave");
+          console.log("section 3 onLeave empty");
+          // if (clumpRef.current && clumpRef.current.isActive) {
+          //   clumpRef.current.setActive(false);
+          //   clumpRef.current.toggleShield(false);
+          // }
         },
         onEnterBack: () => {
+          console.log(" --------section 3 onEnterBack");
+          rotatorX(1);
+          rotatorRef.current.setVisibility(true);
+          // setCameraTarget(
+          //   { x: 0, y: 1, z: 5 },
+          //   { duration: 1, ease: "power2.inOut" }
+          // );
           rotatorCameraSetup(true);
-          if (clumpRef.current && !clumpRef.current.isActive) {
-            clumpRef.current.setActive(false); // Should this be true? Original was setActive(false)
-            clumpRef.current.toggleShield(false);
-          }
+
+          // if (clumpRef.current && !clumpRef.current.isActive) {
+          //   clumpRef.current.setActive(false); // Should this be true? Original was setActive(false)
+          //   clumpRef.current.toggleShield(false);
+          // }
         },
       });
 
@@ -740,6 +798,8 @@ export function AnimationManager({
       */
       createSectionTimeline("section-4", {
         onEnter: () => {
+          console.log(" --------section 4 onEnter");
+
           setFOV(DEFAULT_FOV);
           setCameraPosition(
             { x: 10, y: 10, z: 10 },
@@ -764,81 +824,74 @@ export function AnimationManager({
             logRef.current("model", "Scheduling PUSH animation with delay");
             hasPushedRef.current = true;
             const currentAnimations = kreatonRef.current.getAnimationNames();
+            stopEarthRotation();
 
-            // Delay the push animation by 1 second
-            setTimeout(() => {
-              if (currentAnimations.includes("PUSH")) {
-                logRef.current("model", "Playing PUSH animation");
-                kreatonRef.current.transitionFromCurrentToAnimation("PUSH", {
-                  crossFadeTime: 0.5,
-                  fadeInDuration: 0.3,
-                  loopOnce: true,
-                  onComplete: () => {
-                    logRef.current("model", "PUSH animation completed");
-                  },
-                });
+            if (currentAnimations.includes("PUSH")) {
+              logRef.current("model", "Playing PUSH animation");
+              kreatonRef.current.transitionFromCurrentToAnimation("PUSH", {
+                crossFadeTime: 0.5,
+                fadeInDuration: 0.3,
+                loopOnce: true,
+                onComplete: () => {
+                  logRef.current("model", "PUSH animation completed");
+                },
+              });
 
-                // Delay the explosion to sync with the push animation
-                const pushAction = kreatonRef.current.actions["PUSH"];
-                const animationDuration = pushAction ? pushAction.getClip().duration : 1.5;
+              // Delay the explosion to sync with the push animation
+              const pushAction = kreatonRef.current.actions["PUSH"];
+              const animationDuration = pushAction ? pushAction.getClip().duration : 1.5;
 
-                // Trigger explosion near the end of the push animation
-                explosionTimeoutRef.current = setTimeout(() => {
-                  if (clumpRef.current) {
-                    logRef.current("animation", "Triggering permanent explosion");
-                    clumpRef.current.permanentExplosion(300);
-                    stopEarthRotation();
-                    // Hide clump after explosion
-                    clumpRef.current.setVisibility(false);
-                  }
-                  explosionTimeoutRef.current = null;
+              // Trigger explosion near the end of the push animation
+              explosionTimeoutRef.current = setTimeout(() => {
+                if (clumpRef.current) {
+                  logRef.current("animation", "Triggering permanent explosion");
+                  clumpRef.current.permanentExplosion(300);
+                  stopEarthRotation();
+                  // Hide clump after explosion
+                  clumpRef.current.setVisibility(false);
+                }
+                explosionTimeoutRef.current = null;
 
-                  // Transition to IDLE after explosion
-                  if (currentAnimations.includes("IDLE")) {
-                    logRef.current("model", "Transitioning to IDLE animation");
-                    kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-                      crossFadeTime: 0.5,
-                      fadeInDuration: 0.3,
-                    });
-                  }
-                }, animationDuration * 1000 * 0.7); // Trigger at 70% of push animation
-              } else {
-                logRef.current("error", "PUSH animation not found! Using fallback.");
-                explosionTimeoutRef.current = setTimeout(() => {
-                  if (clumpRef.current) {
-                    logRef.current("animation", "Triggering fallback permanent explosion");
-                    clumpRef.current.permanentExplosion(300);
-                    stopEarthRotation();
-                    // Hide clump after explosion
-                    clumpRef.current.setVisibility(false);
-                  }
-                  explosionTimeoutRef.current = null;
-                }, 1500);
-              }
-            }, 1000); // 1 second delay before push animation
+                // Transition to IDLE after explosion
+                if (currentAnimations.includes("IDLE")) {
+                  logRef.current("model", "Transitioning to IDLE animation");
+                  kreatonTransitionFromCurrentToAnimation("IDLE");
+                }
+              }, animationDuration * 1000 * 0.6); // Trigger at 60% of push animation
+            } else {
+              logRef.current("error", "PUSH animation not found! Using fallback.");
+              explosionTimeoutRef.current = setTimeout(() => {
+                if (clumpRef.current) {
+                  logRef.current("animation", "Triggering fallback permanent explosion");
+                  clumpRef.current.permanentExplosion(300);
+                  stopEarthRotation();
+                  // Hide clump after explosion
+                  clumpRef.current.setVisibility(false);
+                }
+                explosionTimeoutRef.current = null;
+              }, 1000);
+            }
           } else if (hasPushedRef.current) {
             logRef.current("model", "PUSH animation already played, skipping");
           }
         },
-        onLeaveBack: () => {
+        onEnterBack: () => {
+          console.log(" --------section 4 onLeaveBack");
           logRef.current("scrollTrigger", "Leaving Section 4 Backwards");
           setCameraPosition(
-            { x: 10, y: 10, z: 10 },
+            { x: 5, y: 5, z: 5 },
             { duration: 1, ease: "power3.inOut" }
           );
           setCameraTarget(
             { x: 0, y: 1.5, z: 0 },
             { duration: 1, ease: "power2.inOut" }
           );
-          rotatorX(1);
-          rotatorRef.current.setVisibility(true);
+          // rotatorX(1);
+          // rotatorRef.current.setVisibility(true);
           const currentAnimations = kreatonRef.current?.getAnimationNames() || [];
           if (kreatonRef.current && currentAnimations.includes("IDLE")) {
             logRef.current("model", "REVERSE: Reverting to IDLE (leaving Section 4 backwards)");
-            kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-              crossFadeTime: 0.5,
-              fadeInDuration: 0.5,
-            });
+            kreatonTransitionFromCurrentToAnimation("IDLE");
           }
           if (clumpRef.current && !clumpRef.current.isActive) {
             logRef.current("animation", "Re-activating clump particles (leaving Section 4 backwards)");
@@ -854,6 +907,10 @@ export function AnimationManager({
       */
       createSectionTimeline("section-5", {
         onEnter: () => {
+          console.log(" --------section 5 onEnter");
+          if (kreatonRef.current) {
+            kreatonTransitionFromCurrentToAnimation("IDLE");
+          }
           setCameraPosition(
             { x: 0, y: 0.5, z: 4 },
             { duration: 1, ease: "power3.inOut" }
@@ -865,6 +922,7 @@ export function AnimationManager({
           rotatorX(20);
         },
         onLeaveBack: () => {
+          console.log(" --------section 5 onLeaveBack");
           logRef.current("scrollTrigger", "Leaving Section 5 Backwards");
           setCameraPosition(
             { x: 0, y: 0.5, z: 4 },
@@ -889,10 +947,7 @@ export function AnimationManager({
               "model",
               "REVERSE: Reverting to IDLE (leaving Section 5 backwards)"
             );
-            kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-              crossFadeTime: 0.5,
-              fadeInDuration: 0.5,
-            });
+            kreatonTransitionFromCurrentToAnimation("IDLE");
           }
           rotatorX(20);
           stopEarthRotation();
@@ -904,6 +959,7 @@ export function AnimationManager({
       */
       createSectionTimeline("section-6", {
         onEnter: () => {
+          console.log(" --------section 6 onEnter");
           logRef.current(
             "scrollTrigger",
             "Entering Section 6 - POINT/IDLE Cycle"
@@ -969,14 +1025,12 @@ export function AnimationManager({
                 "error",
                 "POINT or IDLE animation not found, cannot start cycle. Playing IDLE."
               );
-              kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-                crossFadeTime: 0.5,
-                fadeInDuration: 0.5,
-              });
+              kreatonTransitionFromCurrentToAnimation("IDLE");
             }
           }
         },
         onLeave: () => {
+          console.log(" --------section 6 onLeave");
           logRef.current("scrollTrigger", "Leaving Section 6");
           if (pointCycleTimeoutRef.current) {
             clearTimeout(pointCycleTimeoutRef.current);
@@ -985,6 +1039,7 @@ export function AnimationManager({
           }
         },
         onLeaveBack: () => {
+          console.log(" --------section 6 onLeaveBack");
           logRef.current("scrollTrigger", "Leaving Section 6 Backwards");
           if (pointCycleTimeoutRef.current) {
             clearTimeout(pointCycleTimeoutRef.current);
@@ -992,10 +1047,7 @@ export function AnimationManager({
             logRef.current("model", "Cleared POINT/IDLE cycle timeout");
           }
           if (kreatonRef.current) {
-            kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-              crossFadeTime: 0.5,
-              fadeInDuration: 0.5,
-            });
+            kreatonTransitionFromCurrentToAnimation("IDLE");
           }
           setCameraPosition(
             { x: 0, y: 0.5, z: 4 },
@@ -1008,6 +1060,7 @@ export function AnimationManager({
           rotatorX(20);
         },
         onEnterBack: () => {
+          console.log(" --------section 6 onEnterBack");
           logRef.current("scrollTrigger", "Re-entering Section 6");
         },
       });
@@ -1018,6 +1071,7 @@ export function AnimationManager({
       createSectionTimeline("section-7", {
         onEnter: () => { },
         onLeaveBack: () => {
+          console.log(" --------section 7 onLeaveBack");
           logRef.current(
             "scrollTrigger",
             "Leaving Section 7 Backwards (Re-entering Section 6)"

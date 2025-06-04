@@ -23,137 +23,186 @@ export const Header_v1 = forwardRef((props, ref) => {
   const groupRef = useRef();
   const goldMeshRefs = useRef([]);
   const whiteMeshRefs = useRef([]);
+  const goldOriginalRotations = useRef([]);
+  const whiteOriginalRotations = useRef([]);
   const timelineGoldRef = useRef(null);
   const timelineWhiteRef = useRef(null);
   const pointLightRef = useRef();
 
-  // // Setup gold and white materials for animation (if not already)
-  // useEffect(() => {
-  //   if (materials.gold) {
-  //     materials.gold.emissive = materials.gold.emissive || { r: 0, g: 0, b: 0 };
-  //     materials.gold.emissiveIntensity = 0.5;
-  //   }
-  //   if (materials.white) {
-  //     materials.white.emissive = materials.white.emissive || { r: 0, g: 0, b: 0 };
-  //     materials.white.emissiveIntensity = 0.5;
-  //   }
-  // }, [materials]);
+  useEffect(() => {
+    // Get mesh keys
+    const goldKeys = Object.keys(nodes).filter((key) => key.startsWith("Gold_") || key.startsWith("R_"));
+    const whiteKeys = Object.keys(nodes).filter(
+      (key) =>
+        key.startsWith("WhiteFont_") ||
+        key.startsWith("OriginalCurveInternationalWHITE_")
+    );
 
-  // useImperativeHandle(ref, () => ({
-  //   // Gold group controls
-  //   showGold: () => {
-  //     const reversedRefs = [...goldMeshRefs.current].reverse();
-  //     reversedRefs.forEach((mesh, index) => {
-  //       if (mesh) {
-  //         const delay = index * 0.08;
-  //         gsap.to(mesh.scale, {
-  //           x: 1,
-  //           y: 1,
-  //           z: 1,
-  //           duration: 0.5,
-  //           delay,
-  //           ease: "elastic.out(1, 0.3)",
-  //         });
-  //       }
-  //     });
-  //   },
-  //   hideGold: () => {
-  //     goldMeshRefs.current.forEach((mesh) => {
-  //       if (mesh) {
-  //         gsap.to(mesh.scale, {
-  //           x: 0,
-  //           y: 0,
-  //           z: 0,
-  //           duration: 0.3,
-  //           ease: "power2.in",
-  //         });
-  //       }
-  //     });
-  //   },
-  //   setGoldEmissiveIntensity: (intensity = 0.5) => {
-  //     goldMeshRefs.current.forEach((mesh) => {
-  //       if (mesh && mesh.material) {
-  //         gsap.to(mesh.material, {
-  //           emissiveIntensity: intensity,
-  //           duration: 0.5,
-  //         });
-  //       }
-  //     });
-  //   },
-  //   // White group controls
-  //   showWhite: () => {
-  //     const reversedRefs = [...whiteMeshRefs.current].reverse();
-  //     reversedRefs.forEach((mesh, index) => {
-  //       if (mesh) {
-  //         const delay = index * 0.08;
-  //         gsap.to(mesh.scale, {
-  //           x: 1,
-  //           y: 1,
-  //           z: 1,
-  //           duration: 0.5,
-  //           delay,
-  //           ease: "elastic.out(1, 0.3)",
-  //         });
-  //       }
-  //     });
-  //   },
-  //   hideWhite: () => {
-  //     whiteMeshRefs.current.forEach((mesh) => {
-  //       if (mesh) {
-  //         gsap.to(mesh.scale, {
-  //           x: 0,
-  //           y: 0,
-  //           z: 0,
-  //           duration: 0.3,
-  //           ease: "power2.in",
-  //         });
-  //       }
-  //     });
-  //   },
-  //   setWhiteEmissiveIntensity: (intensity = 0.5) => {
-  //     whiteMeshRefs.current.forEach((mesh) => {
-  //       if (mesh && mesh.material) {
-  //         gsap.to(mesh.material, {
-  //           emissiveIntensity: intensity,
-  //           duration: 0.5,
-  //         });
-  //       }
-  //     });
-  //   },
-  //   // Shared controls
-  //   moveUp: (z = 0) => {
-  //     if (groupRef.current) {
-  //       gsap.to(groupRef.current.position, {
-  //         y: groupRef.current.position.y + z,
-  //         duration: 2,
-  //         ease: "power2.out",
-  //       });
-  //     }
-  //   },
-  //   getGroupRef: () => groupRef.current,
-  // }));
+    console.log("[Header_v1] goldKeys:", goldKeys);
+    console.log("[Header_v1] whiteKeys:", whiteKeys);
+    console.log("[Header_v1] goldMeshRefs.current:", goldMeshRefs.current);
+    console.log("[Header_v1] whiteMeshRefs.current:", whiteMeshRefs.current);
 
-  // // Animation setup for gold and white (optional, can be expanded)
-  // useEffect(() => {
-  //   if (goldMeshRefs.current.length) {
-  //     gsap.killTweensOf(goldMeshRefs.current);
-  //     goldMeshRefs.current.forEach((mesh) => {
-  //       if (mesh) {
-  //         gsap.set(mesh.scale, { x: 1, y: 1, z: 1 });
-  //         gsap.set(mesh.rotation, { x: 0, y: 0, z: 0 });
-  //       }
-  //     });
-  //   }
-  //   if (whiteMeshRefs.current.length) {
-  //     gsap.killTweensOf(whiteMeshRefs.current);
-  //     whiteMeshRefs.current.forEach((mesh) => {
-  //       if (mesh) {
-  //         gsap.set(mesh.scale, { x: 1, y: 1, z: 1 });
-  //         gsap.set(mesh.rotation, { x: 0, y: 0, z: 0 });
-  //       }
-  //     });
-  //   }
-  // }, []);
+    // Wait until all refs are populated
+    if (
+      goldMeshRefs.current.length !== goldKeys.length ||
+      whiteMeshRefs.current.length !== whiteKeys.length ||
+      goldMeshRefs.current.some((m) => !m) ||
+      whiteMeshRefs.current.some((m) => !m)
+    ) {
+      console.log("[Header_v1] Not all mesh refs are ready. Skipping animation trigger.");
+      return;
+    }
+
+    console.log("[Header_v1] All mesh refs are ready. Starting animation setup.");
+
+    // Store original rotations for gold meshes
+    goldOriginalRotations.current = goldKeys.map((key) => {
+      const rot = nodes[key].rotation || { x: 0, y: 0, z: 0 };
+      return { x: rot.x ?? 0, y: rot.y ?? 0, z: rot.z ?? 0 };
+    });
+    // Store original rotations for white meshes
+    whiteOriginalRotations.current = whiteKeys.map((key) => {
+      const rot = nodes[key].rotation || { x: 0, y: 0, z: 0 };
+      return { x: rot.x ?? 0, y: rot.y ?? 0, z: rot.z ?? 0 };
+    });
+
+    timelineGoldRef.current = gsap.timeline({ paused: true });
+    timelineWhiteRef.current = gsap.timeline({ paused: true });
+
+    // Initial state for gold letters
+    goldMeshRefs.current.forEach((mesh, i) => {
+      if (mesh) {
+        mesh.scale.set(0, 0, 0);
+        mesh.rotation.set(
+          goldOriginalRotations.current[i].x,
+          goldOriginalRotations.current[i].y + Math.PI * 2,
+          goldOriginalRotations.current[i].z
+        );
+        console.log(`[Header_v1] Gold mesh #${i} initial rotation:`, mesh.rotation, goldOriginalRotations.current[i]);
+      }
+    });
+
+    // Initial state for white letters
+    whiteMeshRefs.current.forEach((mesh, i) => {
+      if (mesh) {
+        mesh.scale.set(0, 0, 0);
+        mesh.rotation.set(
+          whiteOriginalRotations.current[i].x,
+          whiteOriginalRotations.current[i].y - Math.PI * 2,
+          whiteOriginalRotations.current[i].z
+        );
+        console.log(`[Header_v1] White mesh #${i} initial rotation:`, mesh.rotation, whiteOriginalRotations.current[i]);
+      }
+    });
+
+    // Animate gold letters with bounce stagger
+    gsap.to(goldMeshRefs.current.map(m => m.scale), {
+      x: 1,
+      y: 1,
+      z: 1,
+      duration: 0.7,
+      ease: "bounce.out",
+      stagger: 0.1,
+      onStart: () => console.log(`[Header_v1] Animating gold mesh scale in (bounce staggered)`),
+      onComplete: () => console.log(`[Header_v1] Gold mesh scale animation complete (bounce staggered)`),
+    });
+
+    // Animate white letters with bounce stagger
+    gsap.to(whiteMeshRefs.current.map(m => m.scale), {
+      x: 1,
+      y: 1,
+      z: 1,
+      duration: 0.7,
+      ease: "bounce.out",
+      stagger: 0.1,
+      onStart: () => console.log(`[Header_v1] Animating white mesh scale in (bounce staggered)`),
+      onComplete: () => console.log(`[Header_v1] White mesh scale animation complete (bounce staggered)`),
+    });
+
+    return () => {
+      gsap.killTweensOf(goldMeshRefs.current.map(m => m.scale));
+      gsap.killTweensOf(goldMeshRefs.current.map(m => m.rotation));
+      gsap.killTweensOf(whiteMeshRefs.current.map(m => m.scale));
+      gsap.killTweensOf(whiteMeshRefs.current.map(m => m.rotation));
+      console.log("[Header_v1] Cleaned up tweens");
+    };
+  }, [nodes, goldMeshRefs.current, whiteMeshRefs.current]);
+
+  // Expose animation controls to parent component
+  useImperativeHandle(ref, () => ({
+    playAnimation: () => {
+      // Replay the show animation
+      gsap.to(goldMeshRefs.current.map(m => m.scale), {
+        x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
+      });
+      gsap.to(goldMeshRefs.current.map((m, i) => m.rotation), {
+        y: (i) => goldOriginalRotations.current[i].y, duration: 0.8, ease: "power2.out", stagger: 0.1
+      });
+      gsap.to(whiteMeshRefs.current.map(m => m.scale), {
+        x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
+      });
+      gsap.to(whiteMeshRefs.current.map((m, i) => m.rotation), {
+        y: (i) => whiteOriginalRotations.current[i].y, duration: 0.8, ease: "power2.out", stagger: 0.1
+      });
+    },
+    reverseAnimation: () => {
+      // Animate all letters out (scale to 0)
+      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].map(m => m.scale), {
+        x: 0, y: 0, z: 0, duration: 0.5, ease: "power2.in", stagger: 0.05
+      });
+    },
+    hide: () => {
+      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].map(m => m.scale), {
+        x: 0, y: 0, z: 0, duration: 0.3, ease: "power2.in", stagger: 0.05
+      });
+    },
+    show: () => {
+      // Show with staggered effect
+      gsap.to(goldMeshRefs.current.map(m => m.scale), {
+        x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
+      });
+      gsap.to(whiteMeshRefs.current.map(m => m.scale), {
+        x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
+      });
+    },
+    moveUp: (y = 1) => {
+      if (groupRef.current) {
+        gsap.to(groupRef.current.position, {
+          y: groupRef.current.position.y + y,
+          duration: 1.2,
+          ease: "power2.out"
+        });
+      }
+    },
+    resetAnimation: () => {
+      // Instantly reset all letters to initial state
+      goldMeshRefs.current.forEach((mesh, i) => {
+        if (mesh) {
+          mesh.scale.set(0, 0, 0);
+          mesh.rotation.set(
+            goldOriginalRotations.current[i].x,
+            goldOriginalRotations.current[i].y + Math.PI * 2,
+            goldOriginalRotations.current[i].z
+          );
+        }
+      });
+      whiteMeshRefs.current.forEach((mesh, i) => {
+        if (mesh) {
+          mesh.scale.set(0, 0, 0);
+          mesh.rotation.set(
+            whiteOriginalRotations.current[i].x,
+            whiteOriginalRotations.current[i].y - Math.PI * 2,
+            whiteOriginalRotations.current[i].z
+          );
+        }
+      });
+      if (groupRef.current) {
+        groupRef.current.position.y = 0;
+      }
+    },
+    getGroupRef: () => groupRef.current,
+  }));
 
   // Render all meshes and collect refs
   return (
@@ -168,7 +217,10 @@ export const Header_v1 = forwardRef((props, ref) => {
         .map((key, i) => (
           <mesh
             key={key}
-            ref={(el) => (goldMeshRefs.current[i] = el)}
+            ref={(el) => {
+              goldMeshRefs.current[i] = el;
+              if (el) console.log(`[Header_v1] Gold mesh ref set for #${i}:`, el);
+            }}
             geometry={nodes[key].geometry}
             material={materials.gold}
             position={nodes[key].position}
@@ -185,7 +237,10 @@ export const Header_v1 = forwardRef((props, ref) => {
         .map((key, i) => (
           <mesh
             key={key}
-            ref={(el) => (whiteMeshRefs.current[i] = el)}
+            ref={(el) => {
+              whiteMeshRefs.current[i] = el;
+              if (el) console.log(`[Header_v1] White mesh ref set for #${i}:`, el);
+            }}
             geometry={nodes[key].geometry}
             material={materials.white}
             // material={

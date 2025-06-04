@@ -144,7 +144,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             depth={50}
             count={5000}
           />
-          <ShootingStars />
+          {/* <ShootingStars /> */}
 
           {/* <OrbitControls /> */}
 
