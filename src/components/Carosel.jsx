@@ -27,29 +27,84 @@ import Portal from './Portal';
 // Define the number of cards to display
 const NUM_CARDS_TO_DISPLAY = 6;
 // Define the radius of the circle for card placement
-const radius = 4; // Add this line to define the radius
+const radius = 4;
 
-const fetchImageData = async (webhookUrl) => {
-  try {
-    const response = await fetch(webhookUrl);
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to fetch image data: ${response.status} ${response.statusText}`
-      );
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching image data:", error);
-    // Return empty array as fallback
-    return [];
-  }
+// API Configuration
+const API_CONFIG = {
+  baseUrl: "https://webhook.creative-directors.com/webhook",
+  endpoint: "7bd04d17-2d35-49e1-a2aa-10b5c8ee3429",
+  maxRetries: 3,
+  retryDelay: 1000, // 1 second
 };
 
-const url =
-  "https://webhook.creative-directors.com/webhook/7bd04d17-2d35-49e1-a2aa-10b5c8ee3429";
+// Custom hook for fetching carousel data
+const useCarouselData = () => {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchImageData = useCallback(async (webhookUrl, retryCount = 0) => {
+    try {
+      const response = await fetch(webhookUrl);
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch image data: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error fetching image data:", error);
+
+      // Implement retry logic
+      if (retryCount < API_CONFIG.maxRetries) {
+        console.log(`Retrying fetch (${retryCount + 1}/${API_CONFIG.maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
+        return fetchImageData(webhookUrl, retryCount + 1);
+      }
+
+      throw error; // Propagate error after all retries
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const webhookUrl = `${API_CONFIG.baseUrl}/${API_CONFIG.endpoint}`;
+        const endpointResponse = await fetchImageData(webhookUrl);
+
+        if (isMounted) {
+          setData(endpointResponse.slice(0, NUM_CARDS_TO_DISPLAY));
+        }
+      } catch (error) {
+        console.error("Error fetching carousel data:", error);
+        if (isMounted) {
+          setError(error.message);
+          setData([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [fetchImageData]);
+
+  return { data, isLoading, error };
+};
 
 // Wrap the Carousel component with React.memo to optimize rendering
 function Carousel({
@@ -216,17 +271,16 @@ function Card({
 }
 
 export const Rotator = forwardRef(({ ...props }, ref) => {
-  const [carouselData, setCarouselData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: carouselData, isLoading, error } = useCarouselData();
   const [isVisible, setIsVisible] = useState(true);
   const carouselRef = useRef();
-  const opacityRef = useRef(1); // Add opacity ref for GSAP animation
+  const opacityRef = useRef(1);
   const isDraggingRef = useRef(false);
   const prevXRef = useRef(0);
-  const velocityRef = useRef(0); // Ref to store rotation velocity
-  const pointerHistoryRef = useRef([]); // Ref to store recent pointer positions and times
-  const hoveredCardCountRef = useRef(0); // Ref to count hovered cards
-  const lastVisibleCardRef = useRef(null); // Track the last visible card index
+  const velocityRef = useRef(0);
+  const pointerHistoryRef = useRef([]);
+  const hoveredCardCountRef = useRef(0);
+  const lastVisibleCardRef = useRef(null);
   const { gl, camera } = useThree();
   const [currentCardData, setCurrentCardData] = useState(null);
   // Constants for damping
@@ -235,32 +289,21 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   const minVelocity = 0.0001; // Threshold to stop the rotation completely
   const autoRotateSpeed = 0.0005; // Speed for default rotation
 
-  // Fetch the data when the component mounts
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const endpointResponse = await fetchImageData(url);
-        setCarouselData(endpointResponse.slice(0, NUM_CARDS_TO_DISPLAY));
-      } catch (error) {
-        console.error("Error fetching carousel data:", error);
-        // Provide some fallback data in case of failure
-        setCarouselData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
   // Function to calculate which card the camera is looking at
   const determineVisibleCard = useCallback(() => {
-    if (!carouselRef.current) return null;
+    if (!carouselRef.current) {
+      return null;
+    }
 
-    // Get all card objects (Image components)
-    const cards = carouselRef.current.children.filter(
-      (child) => child.type === "Mesh" && child.userData.data
-    );
+    // Traverse all children recursively to find Meshes with userData.data
+    const cards = [];
+    carouselRef.current.children.forEach((group) => {
+      group.traverse((child) => {
+        if (child.type === "Mesh" && child.userData.data) {
+          cards.push(child);
+        }
+      });
+    });
 
     if (cards.length === 0) return null;
 
@@ -310,12 +353,10 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
   // Function to clear active project classes when no card is in view
   const clearActiveProjectClasses = useCallback(() => {
-    console.log("Clearing active project classes");
     const allProjectElements = document.querySelectorAll("[data-projects]");
     allProjectElements.forEach((el) => {
       el.classList.remove("active");
     });
-    console.log("Cleared active project classes");
   }, []);
 
   // Function to update DOM elements based on the current card
@@ -330,8 +371,6 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
       const targetElement = document.querySelector(targetSelector);
 
       if (targetElement) {
-        console.log("Found target element for slug:", cardData.slug);
-
         // Remove 'active' class from all elements with data-projects attribute
         const allProjectElements = document.querySelectorAll("[data-projects]");
         allProjectElements.forEach((el) => {
@@ -344,9 +383,6 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
         // Optional: Scroll to the target element
         // targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else {
-        console.warn(
-          `Element with data-projects="${cardData.slug}" not found.`
-        );
         clearActiveProjectClasses();
       }
     },
@@ -363,7 +399,6 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
       // Check if card data has actually changed before updating
       if (!currentCardData || currentCardData.slug !== cardData.slug) {
-        console.log("Card in view changed to:", cardData.name);
         setCurrentCardData(cardData);
 
         // Update DOM elements with active class
@@ -379,11 +414,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Add this useEffect to log current card data whenever it changes
   useEffect(() => {
     if (currentCardData) {
-      console.log("Current Card Details:", {
-        name: currentCardData.name,
-        slug: currentCardData.slug,
-        imageCount: currentCardData.images?.length || 0,
-      });
+      // ... existing code ...
     }
   }, [currentCardData]);
 
@@ -515,15 +546,10 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Handlers for card hover events
   const handleCardHoverStart = () => {
     hoveredCardCountRef.current++;
-    console.log(
-      "Rotator: Card Hover Start, Count:",
-      hoveredCardCountRef.current
-    );
   };
 
   const handleCardHoverEnd = () => {
     hoveredCardCountRef.current = Math.max(0, hoveredCardCountRef.current - 1); // Prevent negative count
-    console.log("Rotator: Card Hover End, Count:", hoveredCardCountRef.current);
   };
 
   // Renamed handler for clarity
@@ -544,9 +570,6 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
       (entry) => now - entry.time < 100
     );
 
-    // console.log(
-    //   `Rotator: Window Pointer Move - DeltaX: ${deltaX}, PrevX: ${prevXRef.current}, CurrentX: ${currentX}`
-    // );
     prevXRef.current = currentX; // Update ref
   };
 
@@ -568,9 +591,6 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
           // Avoid division by zero or tiny time diffs
           const pixelsPerMs = posDiff / timeDiff;
           velocityRef.current = pixelsPerMs * rotationSensitivity * 16.67; // Scale velocity (adjust multiplier as needed)
-          console.log(
-            `Calculated Velocity: ${velocityRef.current} (from ${pixelsPerMs} px/ms)`
-          );
         } else {
           velocityRef.current = 0; // Not enough movement or time
         }

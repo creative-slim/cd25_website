@@ -97,7 +97,7 @@ export const Header_v1 = forwardRef((props, ref) => {
     });
 
     // Animate gold letters with bounce stagger
-    gsap.to(goldMeshRefs.current.map(m => m.scale), {
+    gsap.to(goldMeshRefs.current.filter(Boolean).map(m => m.scale), {
       x: 1,
       y: 1,
       z: 1,
@@ -109,7 +109,7 @@ export const Header_v1 = forwardRef((props, ref) => {
     });
 
     // Animate white letters with bounce stagger
-    gsap.to(whiteMeshRefs.current.map(m => m.scale), {
+    gsap.to(whiteMeshRefs.current.filter(Boolean).map(m => m.scale), {
       x: 1,
       y: 1,
       z: 1,
@@ -121,10 +121,10 @@ export const Header_v1 = forwardRef((props, ref) => {
     });
 
     return () => {
-      gsap.killTweensOf(goldMeshRefs.current.map(m => m.scale));
-      gsap.killTweensOf(goldMeshRefs.current.map(m => m.rotation));
-      gsap.killTweensOf(whiteMeshRefs.current.map(m => m.scale));
-      gsap.killTweensOf(whiteMeshRefs.current.map(m => m.rotation));
+      gsap.killTweensOf(goldMeshRefs.current.filter(Boolean).map(m => m.scale));
+      gsap.killTweensOf(goldMeshRefs.current.filter(Boolean).map(m => m.rotation));
+      gsap.killTweensOf(whiteMeshRefs.current.filter(Boolean).map(m => m.scale));
+      gsap.killTweensOf(whiteMeshRefs.current.filter(Boolean).map(m => m.rotation));
       console.log("[Header_v1] Cleaned up tweens");
     };
   }, [nodes, goldMeshRefs.current, whiteMeshRefs.current]);
@@ -133,36 +133,36 @@ export const Header_v1 = forwardRef((props, ref) => {
   useImperativeHandle(ref, () => ({
     playAnimation: () => {
       // Replay the show animation
-      gsap.to(goldMeshRefs.current.map(m => m.scale), {
+      gsap.to(goldMeshRefs.current.filter(Boolean).map(m => m.scale), {
         x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
       });
-      gsap.to(goldMeshRefs.current.map((m, i) => m.rotation), {
+      gsap.to(goldMeshRefs.current.filter(Boolean).map((m, i) => m.rotation), {
         y: (i) => goldOriginalRotations.current[i].y, duration: 0.8, ease: "power2.out", stagger: 0.1
       });
-      gsap.to(whiteMeshRefs.current.map(m => m.scale), {
+      gsap.to(whiteMeshRefs.current.filter(Boolean).map(m => m.scale), {
         x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
       });
-      gsap.to(whiteMeshRefs.current.map((m, i) => m.rotation), {
+      gsap.to(whiteMeshRefs.current.filter(Boolean).map((m, i) => m.rotation), {
         y: (i) => whiteOriginalRotations.current[i].y, duration: 0.8, ease: "power2.out", stagger: 0.1
       });
     },
     reverseAnimation: () => {
       // Animate all letters out (scale to 0)
-      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].map(m => m.scale), {
+      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean).map(m => m.scale), {
         x: 0, y: 0, z: 0, duration: 0.5, ease: "power2.in", stagger: 0.05
       });
     },
     hide: () => {
-      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].map(m => m.scale), {
+      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean).map(m => m.scale), {
         x: 0, y: 0, z: 0, duration: 0.3, ease: "power2.in", stagger: 0.05
       });
     },
     show: () => {
       // Show with staggered effect
-      gsap.to(goldMeshRefs.current.map(m => m.scale), {
+      gsap.to(goldMeshRefs.current.filter(Boolean).map(m => m.scale), {
         x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
       });
-      gsap.to(whiteMeshRefs.current.map(m => m.scale), {
+      gsap.to(whiteMeshRefs.current.filter(Boolean).map(m => m.scale), {
         x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
       });
     },

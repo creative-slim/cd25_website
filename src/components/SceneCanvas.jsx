@@ -119,7 +119,8 @@ export function SceneCanvas({ scrollContainerRef }) {
   });
 
   return (
-    <Suspense fallback={<div>Loading 3D scene...</div>}>
+    <>
+      {/* <Suspense fallback={<div>Loading 3D scene...</div>}> */}
       <Leva collapsed={true} />
       <Canvas
         gl={{
@@ -180,71 +181,72 @@ export function SceneCanvas({ scrollContainerRef }) {
               shieldRadius={7}
             />
           </Physics>
+
+
+          <AnimationManager
+            kreatonRef={kreatonRef}
+            earthRef={earthRef}
+            rotatorRef={rotatorRef}
+            clumpRef={clumpRef}
+            pointingFingerRef={pointingFingerRef}
+            cdTextRef={cdTextRef}
+            scrollContainerRef={scrollContainerRef}
+          />
+
+          <EffectComposer>
+            {bloomEnabled && (
+              <Bloom
+                intensity={bloomIntensity}
+                luminanceThreshold={bloomLuminanceThreshold}
+                luminanceSmoothing={bloomLuminanceSmoothing}
+              />
+            )}
+
+            {dofEnabled && (
+              <DepthOfField
+                focusDistance={dofFocusDistance}
+                focalLength={dofFocalLength}
+                bokehScale={dofBokehScale}
+              />
+            )}
+
+            {noiseEnabled && <Noise opacity={noiseOpacity} />}
+
+            {vignetteEnabled && (
+              <Vignette
+                eskil={vignetteEskil}
+                offset={vignetteOffset}
+                darkness={vignetteDarkness}
+              />
+            )}
+
+            {chromaticEnabled && <ChromaticAberration offset={chromaticOffset} />}
+
+            {glitchEnabled && (
+              <Glitch mode={glitchMode} strength={glitchStrength} />
+            )}
+
+            {pixelationEnabled && (
+              <Pixelation granularity={pixelationGranularity} />
+            )}
+
+            {toneMappingEnabled && (
+              <ToneMapping
+                mode={toneMappingMode}
+                exposure={toneMappingExposure}
+              />
+            )}
+
+            {hueSaturationEnabled && (
+              <HueSaturation
+                hue={hueSaturationHue}
+                saturation={hueSaturationSaturation}
+              />
+            )}
+
+            <SMAA />
+          </EffectComposer>
         </Suspense>
-
-        <AnimationManager
-          kreatonRef={kreatonRef}
-          earthRef={earthRef}
-          rotatorRef={rotatorRef}
-          clumpRef={clumpRef}
-          pointingFingerRef={pointingFingerRef}
-          cdTextRef={cdTextRef}
-          scrollContainerRef={scrollContainerRef}
-        />
-
-        <EffectComposer>
-          {bloomEnabled && (
-            <Bloom
-              intensity={bloomIntensity}
-              luminanceThreshold={bloomLuminanceThreshold}
-              luminanceSmoothing={bloomLuminanceSmoothing}
-            />
-          )}
-
-          {dofEnabled && (
-            <DepthOfField
-              focusDistance={dofFocusDistance}
-              focalLength={dofFocalLength}
-              bokehScale={dofBokehScale}
-            />
-          )}
-
-          {noiseEnabled && <Noise opacity={noiseOpacity} />}
-
-          {vignetteEnabled && (
-            <Vignette
-              eskil={vignetteEskil}
-              offset={vignetteOffset}
-              darkness={vignetteDarkness}
-            />
-          )}
-
-          {chromaticEnabled && <ChromaticAberration offset={chromaticOffset} />}
-
-          {glitchEnabled && (
-            <Glitch mode={glitchMode} strength={glitchStrength} />
-          )}
-
-          {pixelationEnabled && (
-            <Pixelation granularity={pixelationGranularity} />
-          )}
-
-          {toneMappingEnabled && (
-            <ToneMapping
-              mode={toneMappingMode}
-              exposure={toneMappingExposure}
-            />
-          )}
-
-          {hueSaturationEnabled && (
-            <HueSaturation
-              hue={hueSaturationHue}
-              saturation={hueSaturationSaturation}
-            />
-          )}
-
-          <SMAA />
-        </EffectComposer>
 
         {/* Postprocessing */}
         {/* <EffectComposer disableNormalPass>
@@ -252,6 +254,7 @@ export function SceneCanvas({ scrollContainerRef }) {
           <DepthOfField target={[0, 0, 13]} focalLength={0.3} bokehScale={15} height={700} />
         </EffectComposer> */}
       </Canvas>
-    </Suspense>
+      {/* </Suspense> */}
+    </>
   );
 }

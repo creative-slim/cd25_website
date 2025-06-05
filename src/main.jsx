@@ -4,6 +4,6 @@ import App from "./App.jsx";
 
 ReactDOM.createRoot(document.getElementById("index-root-threed")).render(
   // <React.StrictMode>
-    <App />
+  <App />
   // </React.StrictMode>
 );
