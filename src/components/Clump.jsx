@@ -2,43 +2,54 @@ import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, useTexture } from "@react-three/drei";
 // Uncomment the physics imports when ready to use them
-import { Physics, useSphere } from "@react-three/cannon";
+import { Physics, RigidBody, useRapier, BallCollider } from "@react-three/rapier";
 import {
   useRef,
   useState,
   useEffect,
   forwardRef,
   useImperativeHandle,
+  createRef,
 } from "react";
+import React from "react";
 import { gsap } from "gsap";
 
-const rfs = THREE.MathUtils.randFloatSpread;
-
-const NUM_INSTANCES = 500;
-const INSTANCES_INITIAL_DISTACE = 300;
-const INSTANCE_SIZE = 0.5;
+// === TWEAKABLE CONSTANTS ===
+const NUM_INSTANCES = 10;           // Number of rocks
+const INSTANCE_SIZE = 0.2;           // Size of each rock
+const ORBIT_RADIUS = 5.0;            // Distance of rocks from center (increase for further away)
+const ORBIT_SPEED = 0.5;             // Radians/sec (speed of orbit)
+const SHIELD_RADIUS = 3.5;           // Radius of the shield (increase for bigger shield)
+const SHIELD_COLOR = "blue";         // Shield color
+const SHIELD_OPACITY = 0.3;          // Shield opacity
+const TRANSITION_DURATION = 1.0;     // Seconds for orbit-to-fall transition
+const LOG_POS_INTERVAL = 1.0;        // Seconds between position logs
+// ===========================
 
 const sphereGeometry = new THREE.DodecahedronGeometry(INSTANCE_SIZE, 0);
 const baubleMaterial = new THREE.MeshStandardMaterial({
-  color: "gray",
+  color: "white",
   roughness: 1,
   envMapIntensity: 0.2,
 });
 
 // Convert Shield to use forwardRef
 const Shield = forwardRef(
-  ({ radius, color = "pink", opacity = 0.3, ...props }, ref) => {
+  ({ radius, color = SHIELD_COLOR, opacity = SHIELD_OPACITY, ...props }, ref) => {
     return (
-      <mesh ref={ref} {...props}>
-        <sphereGeometry args={[radius, 32, 32]} />
-        <meshStandardMaterial
-          color={color}
-          transparent
-          opacity={opacity}
-          roughness={0.1}
-          metalness={0.8}
-        />
-      </mesh>
+      <RigidBody type="fixed" colliders={false} position={[0, 0, 0]} {...props}>
+        <BallCollider args={[radius]} />
+        <mesh ref={ref}>
+          <sphereGeometry args={[radius, 32, 32]} />
+          <meshStandardMaterial
+            color={color}
+            transparent
+            opacity={opacity}
+            roughness={0.1}
+            metalness={0.8}
+          />
+        </mesh>
+      </RigidBody>
     );
   }
 );
@@ -49,311 +60,200 @@ export const Clump = forwardRef(
     {
       mat = new THREE.Matrix4(),
       vec = new THREE.Vector3(),
-      shieldRadius = 3,
-      shieldColor = "blue",
-      shieldOpacity = 0.3,
+      shieldRadius = SHIELD_RADIUS,
+      shieldColor = SHIELD_COLOR,
+      shieldOpacity = SHIELD_OPACITY,
       ...props
     },
     ref
   ) => {
-    const [sphereRef, sphereApi] = useSphere(() => ({
-      args: [1],
-      mass: 0.2,
-      angularDamping: 0.5,
-      linearDamping: 0.999,
-      gravity: [0, 0, 0], // Set gravity to zero
-      position: [
-        rfs(INSTANCES_INITIAL_DISTACE),
-        rfs(INSTANCES_INITIAL_DISTACE),
-        rfs(INSTANCES_INITIAL_DISTACE),
-      ],
-    }));
+    const [active, setActive] = useState(false);
+    const [transition, setTransition] = useState(0); // 0 = idle, 1 = active
+    const transitionRef = useRef(0);
+    const transitionStart = useRef(null);
+    const [visible, setVisible] = useState(true);
+    const [shimmer, setShimmer] = useState(1);
+    // Store type for each particle
+    const [types, setTypes] = useState(Array(NUM_INSTANCES).fill("kinematicPosition"));
+    const particleRefs = useRef(Array.from({ length: NUM_INSTANCES }, () => createRef()));
+    const shieldRef = useRef();
+    const initialAngles = useRef(
+      Array.from({ length: NUM_INSTANCES }, (_, i) => {
+        // Distribute points on a sphere using the Golden Section Spiral
+        const phi = Math.acos(1 - 2 * (i + 0.5) / NUM_INSTANCES);
+        const theta = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5);
+        return { phi, theta };
+      })
+    );
+    const initialPositions = useRef(
+      initialAngles.current.map(({ phi, theta }) => [
+        ORBIT_RADIUS * Math.sin(phi) * Math.cos(theta),
+        ORBIT_RADIUS * Math.cos(phi),
+        ORBIT_RADIUS * Math.sin(phi) * Math.sin(theta),
+      ])
+    );
 
     const internalRef = useRef();
-    const shieldRef = useRef();
-    const [visible, setVisible] = useState(false);
-    const [shimmer, setShimmer] = useState(0);
-    const [active, setActive] = useState(false); // Start inactive until triggered
     const [isPermanentlyExploded, setPermanentlyExploded] = useState(false); // Track permanent explosion state
     const opacityObj = useRef({ value: 1 }); // Use object for GSAP
     const shimmerObj = useRef({ value: 0 }); // Use object for GSAP
+    // Add a ref to track last log time
+    const lastLogTime = useRef(0);
 
     // Expose methods to AnimationManager via ref
     useImperativeHandle(ref, () => ({
-      // Add visibility control method with fade effect
-      setVisibility: (visible, options = {}) => {
-        const {
-          duration = 0.5,
-          ease = "power2.inOut",
-          delay = 0,
-          onStart,
-          onComplete
-        } = options;
-
-        if (internalRef.current) {
-          gsap.to(opacityObj.current, {
-            value: visible ? 1 : 0,
-            duration,
-            delay,
-            ease,
-            onStart: () => {
-              if (onStart) onStart();
-              internalRef.current.visible = true; // Keep visible during fade
-            },
-            onUpdate: () => {
-              if (internalRef.current) {
-                internalRef.current.traverse((child) => {
-                  if (child.isMesh) {
-                    child.material.opacity = opacityObj.current.value;
-                    child.material.transparent = true;
-                  }
-                });
-              }
-            },
-            onComplete: () => {
-              if (internalRef.current) {
-                internalRef.current.visible = visible; // Set final visibility
-                if (onComplete) onComplete();
-              }
+      cluster: () => {
+        for (let i = 0; i < NUM_INSTANCES; i++) {
+          const body = particleRefs.current[i].current;
+          if (body) {
+            const pos = body.translation();
+            if (Array.isArray(pos)) {
+              const toCenter = new THREE.Vector3(-pos[0], -pos[1], -pos[2]);
+              toCenter.normalize().multiplyScalar(10);
+              body.applyImpulse([toCenter.x, toCenter.y, toCenter.z], true);
             }
-          });
+          }
         }
-        return visible;
       },
-
-      // Toggle the shield visibility with fade
-      toggleShield: (show = true, options = {}) => {
-        const {
-          duration = 0.5,
-          ease = "power2.inOut",
-          delay = 0
-        } = options;
-
-        // Don't show shield if permanently exploded
-        if (isPermanentlyExploded) {
-          gsap.to(shimmerObj.current, {
-            value: 0,
-            duration,
-            ease,
-            delay,
-            onUpdate: () => setShimmer(shimmerObj.current.value),
-            onComplete: () => setVisible(false)
-          });
-          return false;
-        }
-
-        if (show) {
-          shimmerObj.current.value = 0;
-          setShimmer(0);
-          gsap.to(shimmerObj.current, {
-            value: 1,
-            duration,
-            ease,
-            delay,
-            onStart: () => setVisible(true),
-            onUpdate: () => setShimmer(shimmerObj.current.value)
-          });
-        } else {
-          gsap.to(shimmerObj.current, {
-            value: 0,
-            duration,
-            ease,
-            delay,
-            onUpdate: () => setShimmer(shimmerObj.current.value),
-            onComplete: () => setVisible(false)
-          });
-        }
-        return show;
-      },
-
-      // Explode the particles outward
-      explode: (force = 100, permanent = false) => {
-        if (!sphereRef.current) return false;
-
+      explode: () => {
         for (let i = 0; i < NUM_INSTANCES; i++) {
-          sphereRef.current.getMatrixAt(i, mat);
-          const position = vec.setFromMatrixPosition(mat);
-          const randomForce = THREE.MathUtils.randFloat(
-            force * 0.5,
-            force * 1.5
-          );
-          sphereApi
-            .at(i)
-            .applyImpulse(
-              position.normalize().multiplyScalar(randomForce).toArray(),
-              [0, 0, 0]
-            );
+          const body = particleRefs.current[i].current;
+          if (body) {
+            const pos = body.translation();
+            if (Array.isArray(pos)) {
+              const fromCenter = new THREE.Vector3(pos[0], pos[1], pos[2]);
+              fromCenter.normalize().multiplyScalar(15);
+              body.applyImpulse([fromCenter.x, fromCenter.y, fromCenter.z], true);
+            }
+          }
         }
-
-        // If permanent, deactivate the physics and mark as exploded
-        if (permanent) {
-          setPermanentlyExploded(true);
-          setActive(false); // Turn off normal physics
-        }
-
-        return true;
       },
-
-      // Fix the permanentExplosion method with delayed visibility changes
-      permanentExplosion: (force = 200) => {
-        if (!sphereRef.current) return false;
-
-        // Instead of using this.explode, directly implement the explosion logic
-        for (let i = 0; i < NUM_INSTANCES; i++) {
-          sphereRef.current.getMatrixAt(i, mat);
-          const position = vec.setFromMatrixPosition(mat);
-          const randomForce = THREE.MathUtils.randFloat(
-            force * 0.5,
-            force * 1.5
-          );
-          sphereApi
-            .at(i)
-            .applyImpulse(
-              position.normalize().multiplyScalar(randomForce).toArray(),
-              [0, 0, 0]
-            );
-        }
-
-        // Mark as permanently exploded
-        setPermanentlyExploded(true);
+      reset: () => {
         setActive(false);
-
-        // Fade out shield with delay
-        gsap.to(shimmerObj.current, {
-          value: 0,
-          duration: 0.5,
-          delay: 0.3,
-          ease: "power2.inOut",
-          onUpdate: () => setShimmer(shimmerObj.current.value),
-          onComplete: () => setVisible(false)
-        });
-
-        // Fade out entire clump with longer delay
-        if (internalRef.current) {
-          gsap.to(opacityObj.current, {
-            value: 0,
-            duration: 1,
-            delay: 0.8,
-            ease: "power2.inOut",
-            onUpdate: () => {
-              if (internalRef.current) {
-                internalRef.current.traverse((child) => {
-                  if (child.isMesh) {
-                    child.material.opacity = opacityObj.current.value;
-                    child.material.transparent = true;
-                  }
-                });
-              }
-            },
-            onComplete: () => {
-              if (internalRef.current) {
-                internalRef.current.visible = false;
-              }
-            }
-          });
-        }
-
-        return true;
-      },
-
-      // Implode the particles inward
-      implode: (force = 100) => {
-        if (isPermanentlyExploded || !active || !sphereRef.current)
-          return false;
-
+        setTransition(0);
+        transitionRef.current = 0;
+        setTypes(Array(NUM_INSTANCES).fill("kinematicPosition"));
         for (let i = 0; i < NUM_INSTANCES; i++) {
-          sphereRef.current.getMatrixAt(i, mat);
-          const position = vec.setFromMatrixPosition(mat);
-          const randomForce = THREE.MathUtils.randFloat(
-            force * 0.5,
-            force * 1.5
-          );
-          sphereApi
-            .at(i)
-            .applyImpulse(
-              position.normalize().multiplyScalar(-randomForce).toArray(),
-              [0, 0, 0]
-            );
+          const body = particleRefs.current[i].current;
+          if (body) {
+            body.setTranslation(initialPositions.current[i], true);
+            body.setLinvel([0, 0, 0], true);
+            body.setAngvel([0, 0, 0], true);
+          }
         }
-        return true;
+        setVisible(true);
+        setShimmer(1);
       },
-
-      // Change shield properties
       setShieldProperties: (properties = {}) => {
         if (properties.radius !== undefined) shieldRadius = properties.radius;
         if (properties.color !== undefined) shieldColor = properties.color;
-        if (properties.opacity !== undefined)
-          shieldOpacity = properties.opacity;
+        if (properties.opacity !== undefined) shieldOpacity = properties.opacity;
         return { shieldRadius, shieldColor, shieldOpacity };
       },
-
-      // Activate/deactivate the whole component
-      setActive: (isActive) => {
-        // Don't re-activate if permanently exploded
-        if (isPermanentlyExploded && isActive) return false;
-
-        setActive(isActive);
-        return isActive;
+      toggleShield: (show = true) => {
+        setVisible(show);
+        setShimmer(show ? 1 : 0);
       },
-
-      // Check if permanently exploded
-      isPermanentlyExploded: () => isPermanentlyExploded,
-
-      // Get references to internal objects
+      setActive: (isActive) => {
+        if (isActive === active) return;
+        setActive(isActive);
+        transitionStart.current = performance.now();
+      },
       getObject: () => internalRef.current,
       getShield: () => shieldRef.current,
     }));
 
-    useFrame(() => {
-      if (visible && shimmer < 1) {
-        setShimmer((s) => Math.min(1, s + 0.02));
+    useEffect(() => {
+      // Log when rocks are created
+      for (let i = 0; i < NUM_INSTANCES; i++) {
+        console.log(`[Clump] Rock #${i} initial position:`, initialPositions.current[i]);
       }
-    });
-
-    const handleClick = () => {
-      // Use the exposed method
-      ref.current?.explode(150);
-    };
+    }, []);
 
     useFrame((state) => {
-      // Skip all physics if permanently exploded or inactive
-      if (isPermanentlyExploded || !active || !sphereRef.current) return;
-
-      let minDistance = Infinity;
-
-      for (let i = 0; i < NUM_INSTANCES; i++) {
-        sphereRef.current.getMatrixAt(i, mat);
-        const position = vec.setFromMatrixPosition(mat);
-        const distance = position.length();
-        minDistance = Math.min(minDistance, distance);
-
-        if (distance < shieldRadius + 0.4) {
-          sphereApi
-            .at(i)
-            .applyForce(
-              position.normalize().multiplyScalar(80).toArray(),
-              [0, 0, 0]
-            );
-        } else {
-          sphereApi
-            .at(i)
-            .applyForce(
-              position.normalize().multiplyScalar(-80).toArray(),
-              [0, 0, 0]
-            );
+      if (isPermanentlyExploded) return;
+      // Handle transition animation
+      if (transitionStart.current !== null) {
+        const elapsed = (performance.now() - transitionStart.current) / 1000;
+        let t = Math.min(elapsed / TRANSITION_DURATION, 1);
+        if (!active) t = 1 - t;
+        setTransition(t);
+        transitionRef.current = t;
+        if (elapsed >= TRANSITION_DURATION) {
+          setTransition(active ? 1 : 0);
+          transitionRef.current = active ? 1 : 0;
+          transitionStart.current = null;
+          // Switch all types at the end of transition
+          if (active) {
+            setTypes(Array(NUM_INSTANCES).fill("dynamic"));
+          } else {
+            setTypes(Array(NUM_INSTANCES).fill("kinematicPosition"));
+          }
+          console.log("[Clump] Transition complete. Active:", active, "Transition:", transitionRef.current);
         }
       }
-
-      // Auto-shield visibility based on particle positions
-      if (active && !isPermanentlyExploded) {
-        if (minDistance < shieldRadius * 2 && !visible) {
-          setVisible(true);
-          setShimmer(0);
-        } else if (minDistance > shieldRadius * 2 && visible) {
-          setVisible(false);
+      // For each particle
+      for (let i = 0; i < NUM_INSTANCES; i++) {
+        const body = particleRefs.current[i].current;
+        if (!body) continue;
+        const { phi, theta } = initialAngles.current[i];
+        const time = state.clock.getElapsedTime();
+        const orbitTheta = theta + ORBIT_SPEED * time;
+        const target = new THREE.Vector3(
+          ORBIT_RADIUS * Math.sin(phi) * Math.cos(orbitTheta),
+          ORBIT_RADIUS * Math.cos(phi),
+          ORBIT_RADIUS * Math.sin(phi) * Math.sin(orbitTheta)
+        );
+        // Defensive: log before setting kinematic position
+        if (types[i] === "kinematicPosition") {
+          if ([target.x, target.y, target.z].some((v) => !Number.isFinite(v))) {
+            console.warn(`[Clump][DEFENSE] NaN detected in orbit target for rock #${i}:`, target.toArray());
+          }
+          // Log current position before update
+          const posBefore = body.translation && body.translation();
+          if (Array.isArray(posBefore) && posBefore.some((v) => !Number.isFinite(v))) {
+            console.warn(`[Clump][DEFENSE] NaN detected in current position BEFORE setNextKinematicTranslation for rock #${i}:`, posBefore);
+          }
+          body.setNextKinematicTranslation([target.x, target.y, target.z]);
+          // Log after update
+          const posAfter = body.translation && body.translation();
+          if (Array.isArray(posAfter) && posAfter.some((v) => !Number.isFinite(v))) {
+            console.warn(`[Clump][DEFENSE] NaN detected in current position AFTER setNextKinematicTranslation for rock #${i}:`, posAfter);
+          }
         }
+        // Defensive: log for dynamic type as well
+        if (types[i] === "dynamic") {
+          const pos = body.translation && body.translation();
+          if (Array.isArray(pos) && pos.some((v) => !Number.isFinite(v))) {
+            console.warn(`[Clump][DEFENSE] NaN detected in dynamic position for rock #${i}:`, pos);
+          }
+        }
+      }
+      // Log the current position of the first 5 rocks every LOG_POS_INTERVAL seconds
+      const now = state.clock.getElapsedTime();
+      if (now - lastLogTime.current > LOG_POS_INTERVAL) {
+        for (let i = 0; i < Math.min(5, NUM_INSTANCES); i++) {
+          const body = particleRefs.current[i].current;
+          if (body) {
+            const pos = body.translation && body.translation();
+            if (Array.isArray(pos) && pos.some((v) => !Number.isFinite(v))) {
+              console.warn(`[Clump][DEFENSE] NaN detected in periodic log for rock #${i}:`, pos);
+            }
+            console.log(`[Clump] Rock #${i} current position:`, Array.isArray(pos) ? pos : pos);
+          }
+        }
+        lastLogTime.current = now;
       }
     });
+
+    useEffect(() => {
+      // In transition logic, log when types are switched
+      if (transition === 1) {
+        console.log("[Clump] All rocks set to dynamic");
+      } else if (transition === 0) {
+        console.log("[Clump] All rocks set to kinematicPosition");
+      }
+    }, [transition]);
 
     return (
       <group ref={internalRef} {...props}>
@@ -364,16 +264,28 @@ export const Clump = forwardRef(
             color={shieldColor}
             opacity={shieldOpacity * shimmer}
             metalness={shimmer * 0.8}
-            onClick={handleClick}
             renderOrder={1}
           />
         )}
-        <instancedMesh
-          ref={sphereRef}
-          castShadow
-          receiveShadow
-          args={[sphereGeometry, baubleMaterial, NUM_INSTANCES]}
-        />
+        {Array.from({ length: NUM_INSTANCES }).map((_, i) => {
+          console.log(`[Clump][DEFENSE] Creating RigidBody #${i} at`, initialPositions.current[i], 'type:', types[i]);
+          return (
+            <RigidBody
+              key={i}
+              ref={particleRefs.current[i]}
+              type={types[i]}
+              position={initialPositions.current[i]}
+              colliders="ball"
+              mass={1}
+              restitution={0.7}
+              friction={0.5}
+              linearDamping={0.1}
+              angularDamping={0.1}
+            >
+              <mesh castShadow receiveShadow geometry={sphereGeometry} material={baubleMaterial} />
+            </RigidBody>
+          );
+        })}
       </group>
     );
   }
@@ -382,7 +294,7 @@ export const Clump = forwardRef(
 // Update Pointer component as needed or keep as-is
 export function Pointer() {
   const viewport = useThree((state) => state.viewport);
-  const [ref, api] = useSphere(() => ({
+  const [ref, api] = useRigidBody(() => ({
     type: "Kinematic",
     args: [10],
     position: [0, 0, 0],

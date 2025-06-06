@@ -23,10 +23,10 @@ import {
   ToneMapping,
 } from "@react-three/postprocessing";
 
-import { Physics } from "@react-three/cannon";
+import { Physics } from "@react-three/rapier";
 import * as THREE from "three";
 import { Rotator } from "./Carosel";
-import { Clump } from "./Clump";
+import { Rocks } from "./Rocks";
 import { Kreaton } from "./Kreaton_A";
 import { Earth2 } from "./Earthv4_UV";
 import { PointingFinger } from "./PointingFinger";
@@ -35,6 +35,7 @@ import { PointingFinger } from "./PointingFinger";
 import { Header_v1 } from "./CD_header_v1_untransformed";
 import AnimatedStars from "./AnimatedStars";
 import ShootingStars from "./ShootingStars";
+import { PhysicsDemo } from "./PhysicsDemo";
 
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "/artist_workshop_4k.hdr";
@@ -47,7 +48,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   const kreatonRef = useRef();
   const earthRef = useRef();
   const rotatorRef = useRef();
-  const clumpRef = useRef();
+  const rocksRef = useRef();
   const pointingFingerRef = useRef();
   const cdTextRef = useRef();
 
@@ -118,11 +119,25 @@ export function SceneCanvas({ scrollContainerRef }) {
     ),
   });
 
+  // Leva control for rocks active state
+  useControls({
+    "Rocks: Fall to Shield": {
+      value: false,
+      onChange: (v) => {
+        if (rocksRef.current && rocksRef.current.setActive) {
+          rocksRef.current.setActive(v);
+        }
+      },
+      label: "Rocks: Fall to Shield",
+    },
+  });
+
   return (
     <>
       {/* <Suspense fallback={<div>Loading 3D scene...</div>}> */}
       <Leva collapsed={true} />
       <Canvas
+        shadows
         gl={{
           alpha: true,
           antialias: true,
@@ -161,33 +176,29 @@ export function SceneCanvas({ scrollContainerRef }) {
             position={[-0.2, -0.7, 2.4]}
             rotation={[0, 0, 0]}
             visible={false}
-
           />
 
           <Center position={[0, 2, 0]}>
             <Header_v1
               ref={cdTextRef}
               scale={10}
-            // rotation={[Math.PI / 2, 0, 0]}
             />
-
           </Center>
 
           <Physics>
-            <Clump
-              ref={clumpRef}
+            <Rocks
+              ref={rocksRef}
               position={[0, 0, 0]}
               shieldColor="blue"
-              shieldRadius={7}
+            // shieldRadius={1}
             />
           </Physics>
-
 
           <AnimationManager
             kreatonRef={kreatonRef}
             earthRef={earthRef}
             rotatorRef={rotatorRef}
-            clumpRef={clumpRef}
+            clumpRef={rocksRef}
             pointingFingerRef={pointingFingerRef}
             cdTextRef={cdTextRef}
             scrollContainerRef={scrollContainerRef}

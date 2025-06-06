@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, RefObject } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGSAP } from "@gsap/react"; // Import useGSAP
-import { MutableRefObject, RefObject } from "react";
 
 // Register ScrollTrigger with GSAP
 gsap.registerPlugin(ScrollTrigger);
@@ -542,10 +541,6 @@ export function AnimationManager({
         clumpRef.current.setActive(false);
       }
 
-
-
-
-
       /*
       Section 0 - Introduction/Walking
       */
@@ -553,6 +548,7 @@ export function AnimationManager({
         end: "bottom 80%",
         onEnter: () => {
           console.log(" --------section 0 onEnter");
+          // Removed setActive test call; now controlled via Leva in SceneCanvas.jsx
           // Only start walking if we haven't played the initial animation
           if (!initialAnimationPlayedRef.current) {
             logRef.current("model", "PLAYING ANIMATION current->WALKING");
@@ -735,6 +731,9 @@ export function AnimationManager({
         },
         onEnterBack: () => {
           console.log(" --------section 2 onEnterBack");
+          rotatorX(1);
+          rotatorRef.current.setVisibility(true);
+          rotatorCameraSetup(true);
           // setFOV(55); // This was commented out, keeping it so
         },
       });
@@ -748,16 +747,32 @@ export function AnimationManager({
           if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
+          setFOV(DEFAULT_FOV);
+          setCameraPosition(
+            { x: 0, y: 1.5, z: 10 },
+            { duration: 1, ease: "power3.inOut" }
+          );
+          setCameraTarget(
+            { x: 0, y: 0, z: 0 },
+            { duration: 1, ease: "power2.inOut" }
+          );
+          rotatorRef.current.setVisibility(false);
+
+          // Activate clump in section 3
+          if (clumpRef.current) {
+            logRef.current("animation", "Fading in and unleashing storm in Section 3");
+            clumpRef.current.fadeIn(1.5);
+            clumpRef.current.unleashTheStorm();
+          }
         },
         onLeaveBack: () => {
           console.log(" --------section 3 onLeaveBack");
-          if (clumpRef.current && clumpRef.current.isActive) {
+          if (clumpRef.current) {
             logRef.current(
               "animation",
-              "Deactivating clump particles (leaving Section 3 backwards)"
+              "Fading out rocks (leaving Section 3 backwards)"
             );
-            clumpRef.current.setActive(false);
-            clumpRef.current.toggleShield(false);
+            clumpRef.current.fadeOut(1);
           }
           logRef.current(
             "model",
@@ -771,25 +786,14 @@ export function AnimationManager({
         onLeave: () => {
           console.log(" --------section 3 onLeave");
           console.log("section 3 onLeave empty");
-          // if (clumpRef.current && clumpRef.current.isActive) {
-          //   clumpRef.current.setActive(false);
-          //   clumpRef.current.toggleShield(false);
-          // }
         },
         onEnterBack: () => {
           console.log(" --------section 3 onEnterBack");
-          rotatorX(1);
-          rotatorRef.current.setVisibility(true);
-          // setCameraTarget(
-          //   { x: 0, y: 1, z: 5 },
-          //   { duration: 1, ease: "power2.inOut" }
-          // );
-          rotatorCameraSetup(true);
-
-          // if (clumpRef.current && !clumpRef.current.isActive) {
-          //   clumpRef.current.setActive(false); // Should this be true? Original was setActive(false)
-          //   clumpRef.current.toggleShield(false);
-          // }
+          if (clumpRef.current) {
+            logRef.current("animation", "Re-entering Section 3, unleashing storm");
+            clumpRef.current.unleashTheStorm();
+            clumpRef.current.fadeIn(1);
+          }
         },
       });
 
@@ -800,23 +804,9 @@ export function AnimationManager({
         onEnter: () => {
           console.log(" --------section 4 onEnter");
 
-          setFOV(DEFAULT_FOV);
-          setCameraPosition(
-            { x: 10, y: 10, z: 10 },
-            { duration: 1, ease: "power3.inOut" }
-          );
-          setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
-            { duration: 1, ease: "power2.inOut" }
-          );
-          rotatorRef.current.setVisibility(false);
-
-          // Activate clump first
           if (clumpRef.current) {
-            logRef.current("animation", "Activating clump particles in Section 4");
-            clumpRef.current.setVisibility(true); // Make clump visible
-            clumpRef.current.setActive(true);
-            // clumpRef.current.toggleShield(true);
+            logRef.current("animation", "Calming the storm in Section 4");
+            clumpRef.current.calmTheStorm();
           }
 
           // Delay the push animation and explosion
@@ -845,10 +835,10 @@ export function AnimationManager({
               explosionTimeoutRef.current = setTimeout(() => {
                 if (clumpRef.current) {
                   logRef.current("animation", "Triggering permanent explosion");
-                  clumpRef.current.permanentExplosion(300);
+                  // clumpRef.current.permanentExplosion(1);
                   stopEarthRotation();
                   // Hide clump after explosion
-                  clumpRef.current.setVisibility(false);
+                  // clumpRef.current.setVisibility(false);
                 }
                 explosionTimeoutRef.current = null;
 
@@ -857,16 +847,16 @@ export function AnimationManager({
                   logRef.current("model", "Transitioning to IDLE animation");
                   kreatonTransitionFromCurrentToAnimation("IDLE");
                 }
-              }, animationDuration * 1000 * 0.6); // Trigger at 60% of push animation
+              }, animationDuration * 1000 * 0.7); // Trigger at 60% of push animation
             } else {
               logRef.current("error", "PUSH animation not found! Using fallback.");
               explosionTimeoutRef.current = setTimeout(() => {
                 if (clumpRef.current) {
                   logRef.current("animation", "Triggering fallback permanent explosion");
-                  clumpRef.current.permanentExplosion(300);
+                  // clumpRef.current.permanentExplosion(1);
                   stopEarthRotation();
                   // Hide clump after explosion
-                  clumpRef.current.setVisibility(false);
+                  // clumpRef.current.setVisibility(false);
                 }
                 explosionTimeoutRef.current = null;
               }, 1000);
@@ -876,29 +866,24 @@ export function AnimationManager({
           }
         },
         onEnterBack: () => {
+          console.log(" --------section 4 onEnterBack");
+          logRef.current("scrollTrigger", "Re-entering Section 4 from below");
+          if (clumpRef.current) {
+            logRef.current("animation", "Re-entering Section 4, calming storm");
+            clumpRef.current.calmTheStorm();
+            clumpRef.current.fadeIn(1);
+          }
+        },
+        onLeave: () => {
+          console.log(" --------section 4 onLeave");
+          if (clumpRef.current) {
+            logRef.current("animation", "Fading out rocks (leaving Section 4)");
+            // clumpRef.current.fadeOut(1);
+          }
+        },
+        onLeaveBack: () => {
+          // This is handled by onEnterBack of section 3
           console.log(" --------section 4 onLeaveBack");
-          logRef.current("scrollTrigger", "Leaving Section 4 Backwards");
-          setCameraPosition(
-            { x: 5, y: 5, z: 5 },
-            { duration: 1, ease: "power3.inOut" }
-          );
-          setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
-            { duration: 1, ease: "power2.inOut" }
-          );
-          // rotatorX(1);
-          // rotatorRef.current.setVisibility(true);
-          const currentAnimations = kreatonRef.current?.getAnimationNames() || [];
-          if (kreatonRef.current && currentAnimations.includes("IDLE")) {
-            logRef.current("model", "REVERSE: Reverting to IDLE (leaving Section 4 backwards)");
-            kreatonTransitionFromCurrentToAnimation("IDLE");
-          }
-          if (clumpRef.current && !clumpRef.current.isActive) {
-            logRef.current("animation", "Re-activating clump particles (leaving Section 4 backwards)");
-            clumpRef.current.setVisibility(true); // Make clump visible again
-            clumpRef.current.setActive(true);
-            clumpRef.current.toggleShield(true);
-          }
         },
       });
 
