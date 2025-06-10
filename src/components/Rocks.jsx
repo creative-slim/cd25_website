@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment } from "react";
+import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useControls } from "leva";
 import { gsap } from "gsap";
@@ -37,12 +37,51 @@ const lineMaterial = new THREE.LineBasicMaterial({
     linewidth: 1,
 });
 
-const Shield = forwardRef(({ radius = SHIELD_RADIUS, color = SHIELD_COLOR }, ref) => (
-    <mesh ref={ref} visible={false}>
-        <sphereGeometry args={[radius, 32, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0} roughness={0.1} metalness={0.8} />
-    </mesh>
-));
+const shieldVertexShader = `
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+    void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vViewPosition = (viewMatrix * worldPosition).xyz;
+        vNormal = normalize(normalMatrix * normal);
+        gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+`;
+
+const shieldFragmentShader = `
+    uniform vec3 rimColor;
+    uniform float rimPower;
+    uniform float opacity;
+    varying vec3 vNormal;
+    varying vec3 vViewPosition;
+    void main() {
+        vec3 viewDir = normalize(-vViewPosition);
+        float fresnel = 1.0 - dot(vNormal, viewDir);
+        fresnel = pow(fresnel, rimPower);
+        gl_FragColor = vec4(rimColor, fresnel * opacity);
+    }
+`;
+
+const Shield = forwardRef(({ radius = SHIELD_RADIUS, color = SHIELD_COLOR }, ref) => {
+    const material = useMemo(() => new THREE.ShaderMaterial({
+        uniforms: {
+            rimColor: { value: new THREE.Color(color) },
+            rimPower: { value: 2.5 }, // Controls rim thickness
+            opacity: { value: 0.0 } // Controlled by GSAP
+        },
+        vertexShader: shieldVertexShader,
+        fragmentShader: shieldFragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+    }), [color]);
+
+    return (
+        <mesh ref={ref} material={material} visible={false}>
+            <sphereGeometry args={[radius, 64, 64]} />
+        </mesh>
+    );
+});
 
 function generateLightningPath(start, end, segments, chaos) {
     const points = [];
@@ -340,11 +379,11 @@ export const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = S
                         shieldRef.current.visible = false;
                     }
                 }
-            }).to(shieldRef.current.material, {
-                opacity: SHIELD_OPACITY,
+            }).to(shieldRef.current.material.uniforms.opacity, {
+                value: SHIELD_OPACITY,
                 duration: 0.1,
-            }).to(shieldRef.current.material, {
-                opacity: 0,
+            }).to(shieldRef.current.material.uniforms.opacity, {
+                value: 0,
                 duration: 0.4,
                 delay: 0.1
             });
