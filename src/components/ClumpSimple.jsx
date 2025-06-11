@@ -2,7 +2,7 @@ import { useRef, useImperativeHandle, forwardRef, createRef } from "react";
 import { RigidBody } from "@react-three/rapier";
 import * as THREE from "three";
 
-const NUM_SPHERES = 500;
+const NUM_SPHERES = 50;
 const SPHERE_RADIUS = 0.3;
 const INITIAL_DIST = 3;
 

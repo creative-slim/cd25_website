@@ -23,6 +23,7 @@ import { easing } from "maath";
 import "../utils/caroselUtil";
 import { gsap } from "gsap";
 import Portal from './Portal';
+import RainbowConnector from './RainbowConnector';
 
 // Define the number of cards to display
 const NUM_CARDS_TO_DISPLAY = 6;
@@ -649,6 +650,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
       onPointerDown={handlePointerDown} // Only pointer down is needed here
       visible={isVisible} // Add visibility prop
     >
+      <RainbowConnector radius={radius + 0.5} />
       {/* Only render Carousel when data is loaded */}
       {!isLoading && (
         <Carousel
