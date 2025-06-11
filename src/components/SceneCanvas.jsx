@@ -137,7 +137,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   return (
     <>
       {/* <Suspense fallback={<div>Loading 3D scene...</div>}> */}
-      <Leva collapsed={true} />
+      {isDevelopment && <Leva collapsed={true} />}
       <Canvas
         shadows
         gl={{
@@ -179,7 +179,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             rotation={[0, 0, 0]}
             visible={false}
           />
-          <Center position={[0, 2, 0]}>
+          <Center position={[-0.4, 2, 0]}>
             <Header_v1
               ref={cdTextRef}
               scale={10}

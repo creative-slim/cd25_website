@@ -203,11 +203,11 @@ export function AnimationManager({
         },
         onUpdate: () => {
           // Ensure camera always looks at the animating target during the tween
-          camera.lookAt(cameraTargetRef.current);
+          camera.lookAt(cameraTargetRef.current.x, cameraTargetRef.current.y, cameraTargetRef.current.z);
         },
         onComplete: () => {
           // Ensure final lookAt is correct
-          camera.lookAt(cameraTargetRef.current);
+          camera.lookAt(cameraTargetRef.current.x, cameraTargetRef.current.y, cameraTargetRef.current.z);
           if (onComplete) onComplete();
           logRef.current(
             "system",
@@ -286,7 +286,7 @@ export function AnimationManager({
 
       logRef.current(
         "system",
-        `Setting camera FOV from ${camera.fov.toFixed(
+        `Setting camera FOV from ${(camera as unknown as THREE.PerspectiveCamera).fov.toFixed(
           1
         )} to ${fov} using GSAP tween`
       );
@@ -301,15 +301,15 @@ export function AnimationManager({
         },
         onUpdate: () => {
           // IMPORTANT: Update projection matrix on each frame of the tween
-          (camera).updateProjectionMatrix();
+          (camera as unknown as THREE.PerspectiveCamera).updateProjectionMatrix();
         },
         onComplete: () => {
           // Ensure final FOV is set and matrix updated
-          (camera).updateProjectionMatrix();
+          (camera as unknown as THREE.PerspectiveCamera).updateProjectionMatrix();
           if (onComplete) onComplete();
           logRef.current(
             "system",
-            `Camera FOV animation complete: ${camera.fov.toFixed(1)}`
+            `Camera FOV animation complete: ${(camera as unknown as THREE.PerspectiveCamera).fov.toFixed(1)}`
           );
         },
       });
@@ -688,6 +688,7 @@ export function AnimationManager({
           console.log(" --------section 2 onEnter");
           logRef.current("scrollTrigger", "Transitioning to carousel view");
           rotatorX(1);
+
           rotatorRef.current.setVisibility(true);
           rotatorCameraSetup();
           // setCameraTarget(
@@ -700,7 +701,10 @@ export function AnimationManager({
           }
         },
         onLeaveBack: () => {
+
           console.log(" --------section 2 onLeaveBack");
+          rotatorRef.current.setVisibility(false);
+
           // const cameraSequence = gsap.timeline(); // Cleaned up by useGSAP
           // cameraSequence
           //   .to(camera.position, {
@@ -714,7 +718,6 @@ export function AnimationManager({
           //     ease: "power3.inOut",
           //   });
           rotatorX(20);
-          rotatorRef.current.setVisibility(false);
 
           setFOV(DEFAULT_FOV);
           // setCameraTarget(
@@ -819,6 +822,17 @@ export function AnimationManager({
             logRef.current("animation", "Calming the storm in Section 4");
             clumpRef.current.calmTheStorm();
           }
+          // CAMERA SETUP
+          setFOV(DEFAULT_FOV);
+          setCameraPosition(
+            { x: 0, y: 1.5, z: 10 },
+            { duration: 1, ease: "power3.inOut" }
+          );
+          setCameraTarget(
+            { x: 0, y: 0, z: 0 },
+            { duration: 1, ease: "power2.inOut" }
+          );
+          // END CAMERA SETUP
           // Reset the hasPushedRef to false // TEMPORARY
           hasPushedRef.current = false;
           // Delay the push animation and explosion
