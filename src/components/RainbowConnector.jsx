@@ -8,14 +8,14 @@ const vertexShader = `
     uniform float waveFrequency;
     uniform float waveAmplitude;
     varying vec3 vPos;
-    varying float vAngle;
+    varying vec2 vUv;
 
     void main() {
       vPos = position;
-      float angle = atan(position.y, position.x);
-      vAngle = angle;
+      vUv = uv;
       
       vec3 pos = position;
+      float angle = atan(position.y, position.x);
       pos.z += sin(angle * waveFrequency + time * 0.5) * waveAmplitude;
 
       gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
@@ -28,7 +28,7 @@ const fragmentShader = `
     uniform float saturation;
     uniform float opacity;
     uniform float hueShift;
-    varying float vAngle;
+    varying vec2 vUv;
 
     vec3 hsv2rgb(vec3 c) {
       vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
@@ -37,7 +37,7 @@ const fragmentShader = `
     }
 
     void main() {
-      float t = mod((vAngle / (2.0 * 3.14159)) + time * speed + hueShift, 1.0);
+      float t = mod(vUv.x + time * speed + hueShift, 1.0);
       vec3 color = hsv2rgb(vec3(t, saturation, 1.0));
       
       gl_FragColor = vec4(color, opacity);
@@ -79,13 +79,14 @@ const WavyRing = ({
 
     return (
         <mesh ref={meshRef} rotation-x={Math.PI / 2} raycast={() => null}>
-            <torusGeometry args={[radius, tube, 16, 200]} />
+            <torusGeometry args={[radius, tube, 32, 200]} />
             <shaderMaterial
                 args={[shader]}
                 transparent
                 depthWrite={false}
                 blending={THREE.AdditiveBlending}
                 side={THREE.DoubleSide}
+                dithering={true}
             />
         </mesh>
     );

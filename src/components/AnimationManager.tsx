@@ -282,16 +282,16 @@ export function AnimationManager({
       } = options;
 
       // Kill any existing tweens targeting the camera FOV to prevent conflicts
-      gsap.killTweensOf(camera as THREE.PerspectiveCamera, "fov");
+      gsap.killTweensOf(camera, "fov");
 
       logRef.current(
         "system",
-        `Setting camera FOV from ${(camera as THREE.PerspectiveCamera).fov.toFixed(
+        `Setting camera FOV from ${camera.fov.toFixed(
           1
         )} to ${fov} using GSAP tween`
       );
 
-      gsap.to(camera as THREE.PerspectiveCamera, {
+      gsap.to(camera, {
         fov,
         duration,
         ease,
@@ -301,15 +301,15 @@ export function AnimationManager({
         },
         onUpdate: () => {
           // IMPORTANT: Update projection matrix on each frame of the tween
-          (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+          (camera).updateProjectionMatrix();
         },
         onComplete: () => {
           // Ensure final FOV is set and matrix updated
-          (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+          (camera).updateProjectionMatrix();
           if (onComplete) onComplete();
           logRef.current(
             "system",
-            `Camera FOV animation complete: ${(camera as THREE.PerspectiveCamera).fov.toFixed(1)}`
+            `Camera FOV animation complete: ${camera.fov.toFixed(1)}`
           );
         },
       });
@@ -747,6 +747,10 @@ export function AnimationManager({
           if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
+          if (kreatonRef.current) {
+            kreatonTransitionFromCurrentToAnimation("IDLE");
+          }
+
           setFOV(DEFAULT_FOV);
           setCameraPosition(
             { x: 0, y: 1.5, z: 10 },
@@ -764,6 +768,20 @@ export function AnimationManager({
             clumpRef.current.fadeIn(1.5);
             clumpRef.current.unleashTheStorm();
           }
+        },
+        onEnterBack: () => {
+          console.log(" --------section 3 onEnterBack");
+          // Activate clump in section 3
+
+          if (clumpRef.current) {
+            logRef.current("animation", "Re-entering Section 3, unleashing storm");
+
+            clumpRef.current.fadeIn(1);
+            clumpRef.current.unleashTheStorm();
+
+          }
+
+
         },
         onLeaveBack: () => {
           console.log(" --------section 3 onLeaveBack");
@@ -787,14 +805,7 @@ export function AnimationManager({
           console.log(" --------section 3 onLeave");
           console.log("section 3 onLeave empty");
         },
-        onEnterBack: () => {
-          console.log(" --------section 3 onEnterBack");
-          if (clumpRef.current) {
-            logRef.current("animation", "Re-entering Section 3, unleashing storm");
-            clumpRef.current.unleashTheStorm();
-            clumpRef.current.fadeIn(1);
-          }
-        },
+
       });
 
       /*
@@ -808,7 +819,8 @@ export function AnimationManager({
             logRef.current("animation", "Calming the storm in Section 4");
             clumpRef.current.calmTheStorm();
           }
-
+          // Reset the hasPushedRef to false // TEMPORARY
+          hasPushedRef.current = false;
           // Delay the push animation and explosion
           if (kreatonRef.current && !hasPushedRef.current) {
             logRef.current("model", "Scheduling PUSH animation with delay");
@@ -873,6 +885,15 @@ export function AnimationManager({
             clumpRef.current.calmTheStorm();
             clumpRef.current.fadeIn(1);
           }
+          setFOV(DEFAULT_FOV);
+          setCameraPosition(
+            { x: 0, y: 1.5, z: 10 },
+            { duration: 1, ease: "power3.inOut" }
+          );
+          setCameraTarget(
+            { x: 0, y: 0, z: 0 },
+            { duration: 1, ease: "power2.inOut" }
+          );
         },
         onLeave: () => {
           console.log(" --------section 4 onLeave");

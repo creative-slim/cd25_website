@@ -133,12 +133,11 @@ export const PointingFinger = forwardRef((props, ref) => {
       internalRef.current.rotation.z += (targetRotationZ - internalRef.current.rotation.z) * controls.smoothing;
 
       // Clamp position
-      const currentPosition = internalRef.current.position;
-      currentPosition.x = clamp(currentPosition.x, controls.minX, controls.maxX);
-      currentPosition.y = clamp(currentPosition.y, controls.minY, controls.maxY);
-      currentPosition.z = clamp(currentPosition.z, controls.minZ, controls.maxZ);
+      // const currentPosition = internalRef.current.position;
+      // currentPosition.x = clamp(currentPosition.x, controls.minX, controls.maxX);
+      // currentPosition.y = clamp(currentPosition.y, controls.minY, controls.maxY);
+      // currentPosition.z = clamp(currentPosition.z, controls.minZ, controls.maxZ);
 
-      console.log(currentPosition.x, currentPosition.y, currentPosition.z);
     }
   });
 

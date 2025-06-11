@@ -21,6 +21,8 @@ import {
   HueSaturation,
   Pixelation,
   ToneMapping,
+  // Selection,
+  // Select,
 } from "@react-three/postprocessing";
 
 import { Physics } from "@react-three/rapier";
@@ -154,7 +156,8 @@ export function SceneCanvas({ scrollContainerRef }) {
       >
         <Suspense fallback={null}>
           {/* <Perf position="top-left" /> */}
-
+          {/* <Selection> */}
+          {/* <Select enabled={true}> */}
           <AnimatedStars
             radius={100}
             depth={50}
@@ -170,21 +173,18 @@ export function SceneCanvas({ scrollContainerRef }) {
           <ambientLight intensity={0.1} />
           <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
           <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
-          <Rotator ref={rotatorRef} position={[0, -10, 0]} />
           <PointingFinger
             ref={pointingFingerRef}
             position={[-0.2, -0.7, 2.4]}
             rotation={[0, 0, 0]}
             visible={false}
           />
-
           <Center position={[0, 2, 0]}>
             <Header_v1
               ref={cdTextRef}
               scale={10}
             />
           </Center>
-
           <Physics>
             <Rocks
               ref={rocksRef}
@@ -192,18 +192,12 @@ export function SceneCanvas({ scrollContainerRef }) {
 
             />
           </Physics>
+          <Rotator ref={rotatorRef} position={[0, -10, 0]} />
+          {/* </Select> */}
 
-          <AnimationManager
-            kreatonRef={kreatonRef}
-            earthRef={earthRef}
-            rotatorRef={rotatorRef}
-            clumpRef={rocksRef}
-            pointingFingerRef={pointingFingerRef}
-            cdTextRef={cdTextRef}
-            scrollContainerRef={scrollContainerRef}
-          />
+          {/* <Rotator ref={rotatorRef} position={[0, -10, 0]} /> */}
 
-          <EffectComposer>
+          <EffectComposer autoClear={false}>
             {bloomEnabled && (
               <Bloom
                 intensity={bloomIntensity}
@@ -256,6 +250,69 @@ export function SceneCanvas({ scrollContainerRef }) {
 
             <SMAA />
           </EffectComposer>
+          {/* </Selection> */}
+          <AnimationManager
+            kreatonRef={kreatonRef}
+            earthRef={earthRef}
+            rotatorRef={rotatorRef}
+            clumpRef={rocksRef}
+            cdTextRef={cdTextRef}
+            scrollContainerRef={scrollContainerRef}
+          />
+
+          {/* <EffectComposer>
+            {bloomEnabled && (
+              <Bloom
+                intensity={bloomIntensity}
+                luminanceThreshold={bloomLuminanceThreshold}
+                luminanceSmoothing={bloomLuminanceSmoothing}
+              />
+            )}
+
+            {dofEnabled && (
+              <DepthOfField
+                focusDistance={dofFocusDistance}
+                focalLength={dofFocalLength}
+                bokehScale={dofBokehScale}
+              />
+            )}
+
+            {noiseEnabled && <Noise opacity={noiseOpacity} />}
+
+            {vignetteEnabled && (
+              <Vignette
+                eskil={vignetteEskil}
+                offset={vignetteOffset}
+                darkness={vignetteDarkness}
+              />
+            )}
+
+            {chromaticEnabled && <ChromaticAberration offset={chromaticOffset} />}
+
+            {glitchEnabled && (
+              <Glitch mode={glitchMode} strength={glitchStrength} />
+            )}
+
+            {pixelationEnabled && (
+              <Pixelation granularity={pixelationGranularity} />
+            )}
+
+            {toneMappingEnabled && (
+              <ToneMapping
+                mode={toneMappingMode}
+                exposure={toneMappingExposure}
+              />
+            )}
+
+            {hueSaturationEnabled && (
+              <HueSaturation
+                hue={hueSaturationHue}
+                saturation={hueSaturationSaturation}
+              />
+            )}
+
+            <SMAA />
+          </EffectComposer> */}
         </Suspense>
 
         {/* Postprocessing */}

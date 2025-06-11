@@ -24,6 +24,7 @@ import "../utils/caroselUtil";
 import { gsap } from "gsap";
 import Portal from './Portal';
 import RainbowConnector from './RainbowConnector';
+// import { Select } from "@react-three/postprocessing";
 
 // Define the number of cards to display
 const NUM_CARDS_TO_DISPLAY = 6;
@@ -650,7 +651,9 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
       onPointerDown={handlePointerDown} // Only pointer down is needed here
       visible={isVisible} // Add visibility prop
     >
+      {/* <Select enabled={false}> */}
       <RainbowConnector radius={radius + 0.5} />
+      {/* </Select> */}
       {/* Only render Carousel when data is loaded */}
       {!isLoading && (
         <Carousel
