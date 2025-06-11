@@ -189,8 +189,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             <Rocks
               ref={rocksRef}
               position={[0, 0, 0]}
-              shieldColor="blue"
-            // shieldRadius={1}
+
             />
           </Physics>
 

@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment, useMemo } from "react";
+import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useControls } from "leva";
+import { useControls, folder } from "leva";
 import { gsap } from "gsap";
 
 const NUM_ROCKS = 100;
@@ -11,8 +11,10 @@ const MIN_ORBIT_SPEED = -1;
 const MAX_ORBIT_SPEED = 1;
 const ROCK_SIZE = 0.2;
 const SHIELD_RADIUS = 4;
-const SHIELD_COLOR = "blue";
+const SHIELD_COLOR = "black";
 const SHIELD_OPACITY = 0.3;
+const SHIELD_ROUGHNESS = 0.4;
+const SHIELD_METALNESS = 1.0;
 const FALL_TIME = 1.2; // seconds to fall
 const RETURN_TIME = 1.2; // seconds to return
 const LIGHTNING_SEGMENTS = 8;
@@ -34,54 +36,15 @@ const lineMaterial = new THREE.LineBasicMaterial({
     transparent: true,
     opacity: 0.8,
     blending: THREE.AdditiveBlending,
-    linewidth: 1,
+    linewidth: 100,
 });
 
-const shieldVertexShader = `
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    void main() {
-        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-        vViewPosition = (viewMatrix * worldPosition).xyz;
-        vNormal = normalize(normalMatrix * normal);
-        gl_Position = projectionMatrix * viewMatrix * worldPosition;
-    }
-`;
-
-const shieldFragmentShader = `
-    uniform vec3 rimColor;
-    uniform float rimPower;
-    uniform float opacity;
-    varying vec3 vNormal;
-    varying vec3 vViewPosition;
-    void main() {
-        vec3 viewDir = normalize(-vViewPosition);
-        float fresnel = 1.0 - dot(vNormal, viewDir);
-        fresnel = pow(fresnel, rimPower);
-        gl_FragColor = vec4(rimColor, fresnel * opacity);
-    }
-`;
-
-const Shield = forwardRef(({ radius = SHIELD_RADIUS, color = SHIELD_COLOR }, ref) => {
-    const material = useMemo(() => new THREE.ShaderMaterial({
-        uniforms: {
-            rimColor: { value: new THREE.Color(color) },
-            rimPower: { value: 2.5 }, // Controls rim thickness
-            opacity: { value: 0.0 } // Controlled by GSAP
-        },
-        vertexShader: shieldVertexShader,
-        fragmentShader: shieldFragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-    }), [color]);
-
-    return (
-        <mesh ref={ref} material={material} visible={false}>
-            <sphereGeometry args={[radius, 64, 64]} />
-        </mesh>
-    );
-});
+const Shield = forwardRef(({ radius = SHIELD_RADIUS, color = SHIELD_COLOR, roughness = SHIELD_ROUGHNESS, metalness = SHIELD_METALNESS }, ref) => (
+    <mesh ref={ref} visible={false}>
+        <sphereGeometry args={[radius, 32, 32]} />
+        <meshStandardMaterial color={color} transparent opacity={0} roughness={roughness} metalness={metalness} />
+    </mesh>
+));
 
 function generateLightningPath(start, end, segments, chaos) {
     const points = [];
@@ -179,6 +142,35 @@ export const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = S
                 }
             },
         },
+    });
+
+    useControls({
+        "Shield": folder({
+            roughness: {
+                value: SHIELD_ROUGHNESS,
+                min: 0,
+                max: 1,
+                step: 0.01,
+                onChange: (v) => {
+                    if (shieldRef.current) {
+                        shieldRef.current.material.roughness = v;
+                    }
+                },
+                label: "Roughness"
+            },
+            metalness: {
+                value: SHIELD_METALNESS,
+                min: 0,
+                max: 1,
+                step: 0.01,
+                onChange: (v) => {
+                    if (shieldRef.current) {
+                        shieldRef.current.material.metalness = v;
+                    }
+                },
+                label: "Metalness"
+            },
+        })
     });
 
     // Per-rock state
@@ -379,11 +371,11 @@ export const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = S
                         shieldRef.current.visible = false;
                     }
                 }
-            }).to(shieldRef.current.material.uniforms.opacity, {
-                value: SHIELD_OPACITY,
+            }).to(shieldRef.current.material, {
+                opacity: SHIELD_OPACITY,
                 duration: 0.1,
-            }).to(shieldRef.current.material.uniforms.opacity, {
-                value: 0,
+            }).to(shieldRef.current.material, {
+                opacity: 0,
                 duration: 0.4,
                 delay: 0.1
             });
