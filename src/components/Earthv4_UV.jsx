@@ -301,7 +301,7 @@ const WaterMaterial = shaderMaterial(
 
 extend({ WaterMaterial });
 
-export const Earth2 = forwardRef((props, ref) => {
+const Earth2 = forwardRef((props, ref) => {
   const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
 
   // const oceanTexture = useTexture("/seamless_ocean.png"); // Not used in the new shader
@@ -455,3 +455,4 @@ export const Earth2 = forwardRef((props, ref) => {
 });
 
 preloadModel(localModelUrl, remoteModelUrl);
+export default Earth2;

@@ -1,10 +1,11 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Environment, Stars, Center } from "@react-three/drei";
-import { Suspense } from "react";
+import { Suspense, lazy } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
 // import { Perf } from "r3f-perf";
 import { useControls, Leva, folder } from "leva";
+import ErrorBoundary from "./ErrorBoundary";
 
 import {
   Bloom,
@@ -28,21 +29,21 @@ import {
 import { Physics } from "@react-three/rapier";
 import * as THREE from "three";
 import { Rotator } from "./Carosel";
-import { Rocks } from "./Rocks";
-import { Kreaton } from "./Kreaton_A";
-import { Earth2 } from "./Earthv4_UV";
-import { PointingFinger } from "./PointingFinger";
+const Header_v1 = lazy(() => import("./CD_header_v1_untransformed"));
+const Kreaton = lazy(() => import("./Kreaton_A"));
+const Earth2 = lazy(() => import("./Earthv4_UV"));
+const Rocks = lazy(() => import("./Rocks"));
+// const PointingFinger = lazy(() => import("./PointingFinger").then(module => ({ default: module.PointingFinger })));
 // import { CDtext } from "./Site-headings";
 // import { NewFont } from "./FontWorkWebpage";
-import { Header_v1 } from "./CD_header_v1_untransformed";
 import AnimatedStars from "./AnimatedStars";
 import ShootingStars from "./ShootingStars";
 import { PhysicsDemo } from "./PhysicsDemo";
 
 const isDevelopment = import.meta.env.DEV;
-const localModelUrl = "/artist_workshop_4k.hdr";
+const localModelUrl = "/artist_workshop_100.hdr";
 const remoteModelUrl =
-  "https://files.creative-directors.com/creative-website/creative25/glbs/artist_workshop_4k.hdr";
+  "https://files.creative-directors.com/creative-website/creative25/hdr/artist_workshop_100.hdr";
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 console.log(`Loading model from: ${modelUrl}`);
 
@@ -51,7 +52,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   const earthRef = useRef();
   const rotatorRef = useRef();
   const rocksRef = useRef();
-  const pointingFingerRef = useRef();
+  // const pointingFingerRef = useRef();
   const cdTextRef = useRef();
 
   // Post-processing controls (flat, with folder)
@@ -139,7 +140,6 @@ export function SceneCanvas({ scrollContainerRef }) {
       {/* <Suspense fallback={<div>Loading 3D scene...</div>}> */}
       {isDevelopment && <Leva collapsed={true} />}
       <Canvas
-        shadows
         gl={{
           alpha: true,
           antialias: true,
@@ -171,28 +171,40 @@ export function SceneCanvas({ scrollContainerRef }) {
 
           <Environment files={modelUrl} />
           <ambientLight intensity={0.1} />
-          <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
-          <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
-          <PointingFinger
-            ref={pointingFingerRef}
-            position={[-0.2, -0.7, 2.4]}
-            rotation={[0, 0, 0]}
-            visible={false}
-          />
-          <Center position={[-0.4, 2, 0]}>
-            <Header_v1
-              ref={cdTextRef}
-              scale={10}
+          <ErrorBoundary name="Earth2">
+            <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
+          </ErrorBoundary>
+          <ErrorBoundary name="Kreaton">
+            <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
+          </ErrorBoundary>
+          {/* <ErrorBoundary name="PointingFinger">
+            <PointingFinger
+              ref={pointingFingerRef}
+              position={[-0.2, -0.7, 2.4]}
+              rotation={[0, 0, 0]}
+              visible={false}
             />
+          </ErrorBoundary> */}
+          <Center position={[0, 2, 0]}>
+            <ErrorBoundary name="Header_v1">
+              <Header_v1
+                ref={cdTextRef}
+                scale={10}
+              />
+            </ErrorBoundary>
           </Center>
           <Physics>
-            <Rocks
-              ref={rocksRef}
-              position={[0, 0, 0]}
+            <ErrorBoundary name="Rocks">
+              <Rocks
+                ref={rocksRef}
+                position={[0, 0, 0]}
 
-            />
+              />
+            </ErrorBoundary>
           </Physics>
-          <Rotator ref={rotatorRef} position={[0, -10, 0]} />
+          <ErrorBoundary name="Rotator">
+            <Rotator ref={rotatorRef} position={[0, -10, 0]} />
+          </ErrorBoundary>
           {/* </Select> */}
 
           {/* <Rotator ref={rotatorRef} position={[0, -10, 0]} /> */}
@@ -259,60 +271,6 @@ export function SceneCanvas({ scrollContainerRef }) {
             cdTextRef={cdTextRef}
             scrollContainerRef={scrollContainerRef}
           />
-
-          {/* <EffectComposer>
-            {bloomEnabled && (
-              <Bloom
-                intensity={bloomIntensity}
-                luminanceThreshold={bloomLuminanceThreshold}
-                luminanceSmoothing={bloomLuminanceSmoothing}
-              />
-            )}
-
-            {dofEnabled && (
-              <DepthOfField
-                focusDistance={dofFocusDistance}
-                focalLength={dofFocalLength}
-                bokehScale={dofBokehScale}
-              />
-            )}
-
-            {noiseEnabled && <Noise opacity={noiseOpacity} />}
-
-            {vignetteEnabled && (
-              <Vignette
-                eskil={vignetteEskil}
-                offset={vignetteOffset}
-                darkness={vignetteDarkness}
-              />
-            )}
-
-            {chromaticEnabled && <ChromaticAberration offset={chromaticOffset} />}
-
-            {glitchEnabled && (
-              <Glitch mode={glitchMode} strength={glitchStrength} />
-            )}
-
-            {pixelationEnabled && (
-              <Pixelation granularity={pixelationGranularity} />
-            )}
-
-            {toneMappingEnabled && (
-              <ToneMapping
-                mode={toneMappingMode}
-                exposure={toneMappingExposure}
-              />
-            )}
-
-            {hueSaturationEnabled && (
-              <HueSaturation
-                hue={hueSaturationHue}
-                saturation={hueSaturationSaturation}
-              />
-            )}
-
-            <SMAA />
-          </EffectComposer> */}
         </Suspense>
 
         {/* Postprocessing */}

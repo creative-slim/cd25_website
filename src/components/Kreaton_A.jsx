@@ -28,7 +28,7 @@ import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 const localModelUrl = "src/models/Kreaton_final-transformed.glb";
 const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb";
 
-export const Kreaton = forwardRef((props, ref) => {
+const Kreaton = forwardRef((props, ref) => {
   const internalRef = useRef();
   // Use the ModelLoader utility
   const { scene, animations } = useModelLoader(localModelUrl, remoteModelUrl);
@@ -386,5 +386,6 @@ export const Kreaton = forwardRef((props, ref) => {
   );
 });
 
-// Replace the preload at the bottom with the new utility
+// Preload the model
 preloadModel(localModelUrl, remoteModelUrl);
+export default Kreaton;

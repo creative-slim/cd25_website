@@ -68,7 +68,7 @@ function generateLightningPath(start, end, segments, chaos) {
     return points;
 }
 
-export const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_COLOR, ...props }, ref) => {
+const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_COLOR, ...props }, ref) => {
     const groupRef = useRef();
     const shieldRef = useRef();
     const shieldFlashTl = useRef();
@@ -411,4 +411,7 @@ export const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = S
             ))}
         </group>
     );
-}); 
+});
+
+export { Rocks };
+export default Rocks; 

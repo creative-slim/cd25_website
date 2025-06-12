@@ -18,7 +18,7 @@ import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 const localModelUrl = "src/models/CD_header_v1-transformed.glb";
 const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/CD_header_v1-transformed.glb";
 
-export const Header_v1 = forwardRef((props, ref) => {
+const Header_v1 = forwardRef((props, ref) => {
   const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
   const groupRef = useRef();
   const goldMeshRefs = useRef([]);
@@ -259,3 +259,6 @@ export const Header_v1 = forwardRef((props, ref) => {
 });
 
 preloadModel(localModelUrl, remoteModelUrl);
+
+export { Header_v1 };
+export default Header_v1;

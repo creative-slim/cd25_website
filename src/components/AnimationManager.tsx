@@ -9,7 +9,7 @@ import { useGSAP } from "@gsap/react"; // Import useGSAP
 gsap.registerPlugin(ScrollTrigger);
 
 // Debug flag to control all console logs
-const DEBUG_LOGS = true;
+const DEBUG_LOGS = import.meta.env.DEV;
 
 // FOV Constants
 const DEFAULT_FOV = 55;
