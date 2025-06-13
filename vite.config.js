@@ -4,14 +4,18 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    'process.env': {},
+    'process': {},
+  },
   build: {
     // Output a single bundle
     rollupOptions: {
       output: {
         manualChunks: undefined, // Disable code splitting
-        entryFileNames: 'creative-directors.js', // Single output file
-        chunkFileNames: 'creative-directors.js',
-        assetFileNames: 'creative-directors.[ext]'
+        entryFileNames: 'creative-directors.[hash].js', // Single output file
+        chunkFileNames: 'creative-directors.[hash].js',
+        assetFileNames: 'creative-directors.[hash].[ext]'
       }
     },
     // Minify the output
@@ -25,7 +29,7 @@ export default defineConfig({
     // Ensure we're building a library
     lib: {
       entry: 'src/main.jsx', // Your entry point
-      
+      name: 'CreativeDirectors',
       fileName: 'creative-directors',
       formats: ['iife'] // Immediately Invoked Function Expression
     }
