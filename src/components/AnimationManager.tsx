@@ -5,6 +5,8 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGSAP } from "@gsap/react"; // Import useGSAP
 
+/// <reference types="vite/client" />
+
 // Register ScrollTrigger with GSAP
 gsap.registerPlugin(ScrollTrigger);
 
@@ -84,7 +86,7 @@ interface SectionTimelineOptions {
   onUpdate?: (self: any) => void;
   start?: string;
   end?: string;
-  scrub?: boolean;
+  scrub?: boolean | number;
   markers?: boolean;
   toggleActions?: string;
   animations?: Array<{ target: gsap.TweenTarget; vars: gsap.TweenVars; position?: number }>;
@@ -327,7 +329,7 @@ export function AnimationManager({
       onUpdate,
       start = "top top",
       end = "bottom top",
-      scrub = true,
+      scrub = 0.5,
       markers = false, // Set to false in production
       toggleActions = "play none none reverse",
       animations = [], // New parameter to accept animations
@@ -372,31 +374,45 @@ export function AnimationManager({
     return timeline;
   }, []);
 
-  // Check if model is ready
+  // Check if all models are ready
   useEffect(() => {
-    if (kreatonRef.current && kreatonRef.current.getAnimationNames) {
+    const areModelsReady =
+      kreatonRef.current &&
+      kreatonRef.current.getAnimationNames &&
+      earthRef.current &&
+      rotatorRef.current &&
+      clumpRef.current;
+
+    if (areModelsReady) {
       logRef.current(
         "model",
-        "Kreaton model is ready with actions:",
+        "All models are ready. Kreaton actions:",
         kreatonRef.current.getAnimationNames()
       );
       setModelReady(true);
     } else {
-      const checkModel = setInterval(() => {
-        if (kreatonRef.current?.getAnimationNames) {
+      const checkModels = setInterval(() => {
+        const allReady =
+          kreatonRef.current &&
+          kreatonRef.current.getAnimationNames &&
+          earthRef.current &&
+          rotatorRef.current &&
+          clumpRef.current;
+
+        if (allReady) {
           logRef.current(
             "model",
-            "Kreaton model initialized with actions:",
+            "All models initialized. Kreaton actions:",
             kreatonRef.current.getAnimationNames()
           );
           setModelReady(true);
-          clearInterval(checkModel);
+          clearInterval(checkModels);
         }
-      }, 10);
+      }, 100); // Check every 100ms
 
-      return () => clearInterval(checkModel);
+      return () => clearInterval(checkModels);
     }
-  }, [kreatonRef]); // Corrected dependency
+  }, [kreatonRef, earthRef, rotatorRef, clumpRef]);
 
   // Earth rotation setup
   useEffect(() => {
@@ -690,40 +706,20 @@ export function AnimationManager({
           rotatorX(1);
 
           rotatorRef.current.setVisibility(true);
+          rotatorRef.current.setObserverActive(true); // Enable observer when entering section
           rotatorCameraSetup();
-          // setCameraTarget(
-          //   { x: 0, y: 1, z: 5 },
-          //   { duration: 1.0, ease: "power2.inOut" }
-          // );
-          // setFOV(WIDE_FOV);
           if (cdTextRef?.current) {
             cdTextRef.current.hide();
           }
         },
         onLeaveBack: () => {
-
           console.log(" --------section 2 onLeaveBack");
           rotatorRef.current.setVisibility(false);
+          rotatorRef.current.setObserverActive(false); // Disable observer when leaving section
 
-          // const cameraSequence = gsap.timeline(); // Cleaned up by useGSAP
-          // cameraSequence
-          //   .to(camera.position, {
-          //     x: 2,
-          //     duration: 0.5,
-          //     ease: "power3.inOut",
-          //   })
-          //   .to(camera.position, {
-          //     x: 0,
-          //     duration: 0.5,
-          //     ease: "power3.inOut",
-          //   });
           rotatorX(20);
 
           setFOV(DEFAULT_FOV);
-          // setCameraTarget(
-          //   { x: 0, y: 1, z: 0 },
-          //   { duration: 1, ease: "power2.inOut" }
-          // );
           rotatorCameraSetup(true);
           logRef.current(
             "model",
@@ -736,8 +732,8 @@ export function AnimationManager({
           console.log(" --------section 2 onEnterBack");
           rotatorX(1);
           rotatorRef.current.setVisibility(true);
+          rotatorRef.current.setObserverActive(true); // Enable observer when re-entering section
           rotatorCameraSetup(true);
-          // setFOV(55); // This was commented out, keeping it so
         },
       });
 

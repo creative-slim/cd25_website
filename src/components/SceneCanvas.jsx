@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, Stars, Center } from "@react-three/drei";
+import { OrbitControls, Environment, Stars, Center, Float } from "@react-three/drei";
 import { Suspense, lazy } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
@@ -27,7 +27,7 @@ import {
 } from "@react-three/postprocessing";
 
 import { Physics } from "@react-three/rapier";
-import * as THREE from "three";
+// import * as THREE from "three";
 import { Rotator } from "./Carosel";
 const Header_v1 = lazy(() => import("./CD_header_v1_untransformed"));
 const Kreaton = lazy(() => import("./Kreaton_A"));
@@ -37,8 +37,8 @@ const Rocks = lazy(() => import("./Rocks"));
 // import { CDtext } from "./Site-headings";
 // import { NewFont } from "./FontWorkWebpage";
 import AnimatedStars from "./AnimatedStars";
-import ShootingStars from "./ShootingStars";
-import { PhysicsDemo } from "./PhysicsDemo";
+// import ShootingStars from "./unused/ShootingStars";
+// import { PhysicsDemo } from "./unused/PhysicsDemo";
 
 const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "/artist_workshop_100.hdr";
@@ -163,7 +163,6 @@ export function SceneCanvas({ scrollContainerRef }) {
             depth={50}
             count={5000}
           />
-          {/* <ShootingStars /> */}
 
           {/* <OrbitControls /> */}
 
@@ -186,12 +185,14 @@ export function SceneCanvas({ scrollContainerRef }) {
             />
           </ErrorBoundary> */}
           <Center position={[0, 2, 0]}>
-            <ErrorBoundary name="Header_v1">
-              <Header_v1
-                ref={cdTextRef}
-                scale={10}
-              />
-            </ErrorBoundary>
+            <Float speed={1} rotationIntensity={0.5} floatIntensity={2}>
+              <ErrorBoundary name="Header_v1">
+                <Header_v1
+                  ref={cdTextRef}
+                  scale={10}
+                />
+              </ErrorBoundary>
+            </Float>
           </Center>
           <Physics>
             <ErrorBoundary name="Rocks">

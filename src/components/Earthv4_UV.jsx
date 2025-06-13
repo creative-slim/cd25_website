@@ -26,9 +26,9 @@ const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb"; // Corrected remote URL if needed
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
-const localWaterTextureUrl = "/water-texture.jpg";
+const localWaterTextureUrl = "/water-texture_Small.jpeg";
 const remoteWaterTextureUrl =
-  "http://files.creative-directors.com/creative-website/creative25/textures/water-texture.jpg";
+  "http://files.creative-directors.com/creative-website/creative25/textures/water-texture_Small.jpeg";
 const waterTextureUrl = isDevelopment
   ? localWaterTextureUrl
   : remoteWaterTextureUrl; // Corrected remote URL if needed

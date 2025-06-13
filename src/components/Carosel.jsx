@@ -275,6 +275,7 @@ function Card({
 export const Rotator = forwardRef(({ ...props }, ref) => {
   const { data: carouselData, isLoading, error } = useCarouselData();
   const [isVisible, setIsVisible] = useState(true);
+  const [isObserverActive, setIsObserverActive] = useState(false); // New state for observer control
   const carouselRef = useRef();
   const opacityRef = useRef(1);
   const isDraggingRef = useRef(false);
@@ -364,7 +365,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Function to update DOM elements based on the current card
   const updateActiveElements = useCallback(
     (cardData) => {
-      if (!cardData?.slug) {
+      if (!cardData?.slug || !isObserverActive) { // Check if observer is active
         clearActiveProjectClasses();
         return;
       }
@@ -381,20 +382,17 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
         // Add 'active' class to the element matching the current card
         targetElement.classList.add("active");
-
-        // Optional: Scroll to the target element
-        // targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else {
         clearActiveProjectClasses();
       }
     },
-    [clearActiveProjectClasses]
+    [clearActiveProjectClasses, isObserverActive] // Add isObserverActive to dependencies
   );
 
   // Handler for card view changes with improved logging
   const handleCardViewChange = useCallback(
     (cardData) => {
-      if (!cardData) {
+      if (!cardData || !isObserverActive) { // Check if observer is active
         clearActiveProjectClasses();
         return;
       }
@@ -410,7 +408,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
         props.onCardViewChange?.(cardData);
       }
     },
-    [props, currentCardData, updateActiveElements, clearActiveProjectClasses]
+    [props, currentCardData, updateActiveElements, clearActiveProjectClasses, isObserverActive] // Add isObserverActive to dependencies
   );
 
   // Add this useEffect to log current card data whenever it changes
@@ -432,6 +430,11 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
       } = options;
 
       setIsVisible(visible);
+      // When hiding, also disable the observer
+      if (!visible) {
+        setIsObserverActive(false);
+        clearActiveProjectClasses();
+      }
 
       if (carouselRef.current) {
         // Kill any existing opacity animations
@@ -463,6 +466,13 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
             }
           }
         });
+      }
+    },
+    // Add new method to control observer state
+    setObserverActive: (active) => {
+      setIsObserverActive(active);
+      if (!active) {
+        clearActiveProjectClasses();
       }
     },
     // Get current visibility state
