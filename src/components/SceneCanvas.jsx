@@ -1,10 +1,10 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, Stars, Center, Float } from "@react-three/drei";
+import { Environment, Center, Float } from "@react-three/drei";
 import { Suspense, lazy } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
 // import { Perf } from "r3f-perf";
-import { useControls, Leva, folder } from "leva";
+import { useControls, Leva } from "leva";
 import ErrorBoundary from "./ErrorBoundary";
 
 import {
@@ -13,15 +13,14 @@ import {
   EffectComposer,
   // LensFlare,
   Noise,
-  SMAA,
-  SSAO,
+  // SMAA,
+  // SSAO,
   Vignette,
   ChromaticAberration,
   // ColorAverage,
   Glitch,
-  HueSaturation,
   Pixelation,
-  ToneMapping,
+  // ToneMapping,
   // Selection,
   // Select,
 } from "@react-three/postprocessing";
@@ -78,48 +77,10 @@ export function SceneCanvas({ scrollContainerRef }) {
     glitchStrength,
     pixelationEnabled,
     pixelationGranularity,
-    toneMappingEnabled,
-    toneMappingMode,
-    toneMappingExposure,
-    hueSaturationEnabled,
-    hueSaturationHue,
-    hueSaturationSaturation,
   } = useControls({
-    "Post Processing": folder(
-      {
-        bloomEnabled: { value: true, label: "Enable Bloom" },
-        bloomIntensity: { value: 1.2, min: 0, max: 5, step: 0.01 },
-        bloomLuminanceThreshold: { value: 0.4, min: 0, max: 1, step: 0.01 },
-        bloomLuminanceSmoothing: { value: 0.9, min: 0, max: 1, step: 0.01 },
-        dofEnabled: { value: false, label: "Enable Depth of Field" },
-        dofFocusDistance: { value: 0, min: 0, max: 1, step: 0.001 },
-        dofFocalLength: { value: 0.02, min: 0, max: 0.2, step: 0.001 },
-        dofBokehScale: { value: 2, min: 0, max: 10, step: 0.1 },
-        noiseEnabled: { value: false, label: "Enable Noise" },
-        noiseOpacity: { value: 0.02, min: 0, max: 1, step: 0.01 },
-        vignetteEnabled: { value: false, label: "Enable Vignette" },
-        vignetteEskil: { value: false },
-        vignetteOffset: { value: 0.1, min: 0, max: 1, step: 0.01 },
-        vignetteDarkness: { value: 1.1, min: 0, max: 5, step: 0.01 },
-        chromaticEnabled: {
-          value: false,
-          label: "Enable Chromatic Aberration",
-        },
-        chromaticOffset: { value: [0.002, 0.002] },
-        glitchEnabled: { value: false, label: "Enable Glitch" },
-        glitchMode: { value: "CONSTANT_WILD" },
-        glitchStrength: { value: 0.3, min: 0, max: 1, step: 0.01 },
-        pixelationEnabled: { value: false, label: "Enable Pixelation" },
-        pixelationGranularity: { value: 1, min: 1, max: 16, step: 1 },
-        toneMappingEnabled: { value: false, label: "Enable Tone Mapping" },
-        toneMappingMode: { value: "ACES_FILMIC" },
-        toneMappingExposure: { value: 1, min: 0, max: 5, step: 0.01 },
-        hueSaturationEnabled: { value: false, label: "Enable Hue/Saturation" },
-        hueSaturationHue: { value: 0, min: -Math.PI, max: Math.PI, step: 0.01 },
-        hueSaturationSaturation: { value: 0, min: -1, max: 1, step: 0.01 },
-      },
-      { collapsed: true }
-    ),
+    "Post Processing": {
+      collapsed: true,
+    },
   });
 
   // Leva control for rocks active state
@@ -142,9 +103,9 @@ export function SceneCanvas({ scrollContainerRef }) {
       <Canvas
         gl={{
           alpha: true,
-          antialias: true,
-          background: false,
-          toneMapping: false,
+          // antialias: true,
+          // background: false,
+          // toneMapping: false,
         }}
         dpr={1}
         camera={{
@@ -169,7 +130,7 @@ export function SceneCanvas({ scrollContainerRef }) {
           {/* <primitive object={new THREE.AxesHelper(5)} /> */}
 
           <Environment files={modelUrl} />
-          <ambientLight intensity={0.1} />
+          {/* <ambientLight intensity={0.1} /> */}
           <ErrorBoundary name="Earth2">
             <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
           </ErrorBoundary>
@@ -247,21 +208,6 @@ export function SceneCanvas({ scrollContainerRef }) {
               <Pixelation granularity={pixelationGranularity} />
             )}
 
-            {toneMappingEnabled && (
-              <ToneMapping
-                mode={toneMappingMode}
-                exposure={toneMappingExposure}
-              />
-            )}
-
-            {hueSaturationEnabled && (
-              <HueSaturation
-                hue={hueSaturationHue}
-                saturation={hueSaturationSaturation}
-              />
-            )}
-
-            <SMAA />
           </EffectComposer>
           {/* </Selection> */}
           <AnimationManager

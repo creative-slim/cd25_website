@@ -12,14 +12,9 @@ import {
 } from "react";
 // Import useThree
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import {
-  Image,
-  Environment,
-  ScrollControls,
-  useScroll,
-  useTexture,
-} from "@react-three/drei";
-import { easing } from "maath";
+// import { Image, Environment, ScrollControls, useScroll, useTexture } from "@react-three/drei";
+import { useTexture } from "@react-three/drei";
+// import { easing } from "maath";
 import "../utils/caroselUtil";
 import { gsap } from "gsap";
 import Portal from './Portal';
@@ -358,6 +353,9 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   const clearActiveProjectClasses = useCallback(() => {
     const allProjectElements = document.querySelectorAll("[data-projects]");
     allProjectElements.forEach((el) => {
+      if (el.classList.contains("active")) {
+        console.log("[CAROUSEL] Removing 'active' class from:", el);
+      }
       el.classList.remove("active");
     });
   }, []);
@@ -366,6 +364,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   const updateActiveElements = useCallback(
     (cardData) => {
       if (!cardData?.slug || !isObserverActive) { // Check if observer is active
+        console.log("[CAROUSEL] updateActiveElements: No cardData or observer inactive, clearing active classes.");
         clearActiveProjectClasses();
         return;
       }
@@ -377,12 +376,17 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
         // Remove 'active' class from all elements with data-projects attribute
         const allProjectElements = document.querySelectorAll("[data-projects]");
         allProjectElements.forEach((el) => {
+          if (el.classList.contains("active")) {
+            console.log("[CAROUSEL] Removing 'active' class from:", el);
+          }
           el.classList.remove("active");
         });
 
         // Add 'active' class to the element matching the current card
         targetElement.classList.add("active");
+        console.log("[CAROUSEL] Adding 'active' class to:", targetElement);
       } else {
+        console.log("[CAROUSEL] updateActiveElements: Target element not found, clearing active classes.");
         clearActiveProjectClasses();
       }
     },
