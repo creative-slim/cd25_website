@@ -4,13 +4,13 @@ Command: npx gltfjsx@6.5.3 ./public/earthv4_UV.glb --transform
 Files: ./public/earthv4_UV.glb [356.76KB] > /Users/slim-cd/Documents/_Projects/__Creative Directors Website/website 2025/react-3D/cd25_website/earthv4_UV-transformed.glb [30.93KB] (91%)
 */
 
-import React, { useRef, useMemo, useEffect } from "react"; // Import useEffect
-import { useGLTF, useTexture, shaderMaterial, Sphere } from "@react-three/drei"; // Import shaderMaterial
-import { useFrame, extend, useThree } from "@react-three/fiber"; // Import extend
+import React, { useRef, useMemo, useEffect, useCallback } from "react";
+import { useGLTF, useTexture, shaderMaterial, Sphere } from "@react-three/drei";
+import { useFrame, extend, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { Suspense } from "react";
 import { forwardRef, useImperativeHandle } from "react";
-import { useControls } from "leva"; // Import useControls
+import { useControls } from "leva";
 import {
   Color,
   RepeatWrapping,
@@ -20,10 +20,10 @@ import {
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 
 // Determine the model URL based on the environment
-const isDevelopment = import.meta.env.DEV;
+const isDevelopment = process.env.NODE_ENV === 'development';
 const localModelUrl = "src/models/earth_final-transformed.glb";
 const remoteModelUrl =
-  "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb"; // Corrected remote URL if needed
+  "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb";
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
 const localWaterTextureUrl = "/water-texture_Small.jpeg";
@@ -31,12 +31,16 @@ const remoteWaterTextureUrl =
   "http://files.creative-directors.com/creative-website/creative25/textures/water-texture_Small.jpeg";
 const waterTextureUrl = isDevelopment
   ? localWaterTextureUrl
-  : remoteWaterTextureUrl; // Corrected remote URL if needed
-console.log(`Loading water texture from: ${waterTextureUrl}`); // Log which URL is being used
+  : remoteWaterTextureUrl;
 
-console.log(`Loading model from: ${modelUrl}`); // Log which URL is being used
+// Only log in development
+if (isDevelopment) {
+  console.log(`Loading water texture from: ${waterTextureUrl}`);
+  console.log(`Loading model from: ${modelUrl}`);
+}
 
-const waterVertexShader = `
+// Extract shaders to constants for better readability and to avoid re-creation
+const WATER_VERTEX_SHADER = `
   uniform float uTime;
   uniform float uNoiseFrequency;
   uniform float uNoiseAmplitude;
@@ -113,7 +117,7 @@ const waterVertexShader = `
   }
 `;
 
-const waterFragmentShader = `
+const WATER_FRAGMENT_SHADER = `
   uniform sampler2D uTexture;
   uniform bool uUseTexture; // To control texture usage
   uniform vec3 uColor;
@@ -273,23 +277,23 @@ const WaterMaterial = shaderMaterial(
     uColor: new Color(0x1e90ff), // Default water color
     uTexture: null,
     uUseTexture: true,
-    uOpacity: 0.84, // Updated
-    uNoiseFrequency: 6.4, // Updated
-    uNoiseAmplitude: 0.02, // Updated
-    uNoiseSpeed: 0.5, // Updated
-    uRoughness: 0.57, // Updated
-    uMetalness: 0.2, // Updated
+    uOpacity: 0.84,
+    uNoiseFrequency: 6.4,
+    uNoiseAmplitude: 0.02,
+    uNoiseSpeed: 0.5,
+    uRoughness: 0.57,
+    uMetalness: 0.2,
     // Caustics uniforms
-    uCausticsFrequency: 14.3, // Updated
-    uCausticsSpeed: 0.16, // Updated
-    uCausticsIntensity: 0.2, // Updated
-    uCausticsSharpness: 1.0, // Updated
-    uCausticsEdgeThickness: 0.13, // Updated
-    uCausticsDistortionFrequency: 19.5, // Updated
-    uCausticsDistortionAmplitude: 0.14, // Updated
+    uCausticsFrequency: 14.3,
+    uCausticsSpeed: 0.16,
+    uCausticsIntensity: 0.2,
+    uCausticsSharpness: 1.0,
+    uCausticsEdgeThickness: 0.13,
+    uCausticsDistortionFrequency: 19.5,
+    uCausticsDistortionAmplitude: 0.14,
   },
-  waterVertexShader,
-  waterFragmentShader,
+  WATER_VERTEX_SHADER,
+  WATER_FRAGMENT_SHADER,
   (material) => {
     if (material) {
       material.transparent = true;
@@ -301,42 +305,12 @@ const WaterMaterial = shaderMaterial(
 
 extend({ WaterMaterial });
 
-const Earth2 = forwardRef((props, ref) => {
-  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
-
-  // const oceanTexture = useTexture("/seamless_ocean.png"); // Not used in the new shader
-  // const matcapTexture = useTexture("/matcap_ocean.png"); // Not used in the new shader
-  const sphereRef = useRef();
-  const waterMaterialRef = useRef();
-  const waterMeshRef = useRef(); // Ref for the water sphere mesh
-
-  const { gl, scene } = useThree(); // To access scene.environment
-
-  const materialRef = useRef();
-  const innerSphereRef = useRef();
-
-  const waterTexture = useTexture(waterTextureUrl);
-
-  const {
-    noiseFrequency,
-    noiseAmplitude,
-    noiseSpeed,
-    waterColor,
-    waterOpacity,
-    roughness,
-    metalness,
-    useTextureFlag,
-    // Caustics controls
-    causticsFrequency,
-    causticsSpeed,
-    causticsIntensity,
-    causticsSharpness,
-    causticsEdgeThickness,
-    causticsDistortionFrequency,
-    causticsDistortionAmplitude,
-  } = useControls("Water Shader", {
-    noiseFrequency: { value: 3.0, min: 0.1, max: 20, step: 0.1 }, // max increased for flexibility
-    noiseAmplitude: { value: 0.02, min: 0.001, max: 0.1, step: 0.001 }, // min/step adjusted
+// This component isolates the Leva controls, preventing the main component
+// from re-rendering every time a control is changed.
+function WaterShaderControls() {
+  const controls = useControls("Water Shader", {
+    noiseFrequency: { value: 3.0, min: 0.1, max: 20, step: 0.1 },
+    noiseAmplitude: { value: 0.02, min: 0.001, max: 0.1, step: 0.001 },
     noiseSpeed: { value: 0.3, min: 0.0, max: 2, step: 0.01 },
     waterColor: "#00b2ff",
     waterOpacity: { value: 0.88, min: 0, max: 1, step: 0.01 },
@@ -384,64 +358,89 @@ const Earth2 = forwardRef((props, ref) => {
       max: 50,
       step: 0.1,
       folder: "Caustics",
-    }, // max increased
+    },
     causticsDistortionAmplitude: {
       value: 0.04,
       min: 0.0,
       max: 0.5,
       step: 0.001,
       folder: "Caustics",
-    }, // max increased
+    },
   }, { collapsed: true });
 
-  if (waterTexture) {
-    waterTexture.wrapS = waterTexture.wrapT = RepeatWrapping;
-  }
+  return controls;
+}
+
+
+const Earth2 = forwardRef((props, ref) => {
+  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
+
+  const materialRef = useRef();
+  const waterTexture = useTexture(waterTextureUrl);
+
+  // Get controls from the separate, memoized component
+  const shaderControls = WaterShaderControls();
+
+  // Memoize the texture setup to prevent it from running on every render
+  const setupTexture = useCallback(() => {
+    if (waterTexture) {
+      waterTexture.wrapS = waterTexture.wrapT = RepeatWrapping;
+    }
+  }, [waterTexture]);
+
+  useEffect(() => {
+    setupTexture();
+  }, [setupTexture]);
+
+  // Optimize the frame loop update by memoizing the callback
+  const updateMaterial = useCallback((delta) => {
+    if (materialRef.current) {
+      materialRef.current.uniforms.uTime.value += delta;
+    }
+  }, []);
 
   useFrame((state, delta) => {
-    if (materialRef.current) {
-      materialRef.current.uniforms.uTime.value += delta; // uNoiseSpeed will now control the effective speed
-    }
+    updateMaterial(delta);
   });
+
+  // Memoize geometry arguments to prevent re-creation on each render
+  const sphereGeometryArgs = useMemo(() => [1.023, 128 * 4, 128 * 4], []);
+  const innerSphereArgs = useMemo(() => [1.023, 128 * 4, 128 * 4], []);
 
   return (
     <group ref={ref} {...props} dispose={null}>
       <mesh
         name="ocean"
-        ref={waterMeshRef}
-        rotation={[-0.8, 0.5, -0.55]} // Keep existing rotation if desired
-        scale={1.82} // Keep existing scale if desired
+        rotation={[-0.8, 0.5, -0.55]}
+        scale={1.82}
       >
-        <sphereGeometry args={[1.023, 128 * 4, 128 * 4]} />
+        <sphereGeometry args={sphereGeometryArgs} />
         <waterMaterial
           ref={materialRef}
           attach="material"
-          uTexture={waterTexture} // Always pass the loaded texture
-          uUseTexture={useTextureFlag && !!waterTexture} // Control usage in shader
-          uColor={new Color(waterColor)}
-          uOpacity={waterOpacity}
-          uNoiseFrequency={noiseFrequency}
-          uNoiseAmplitude={noiseAmplitude}
-          uNoiseSpeed={noiseSpeed}
-          uRoughness={roughness}
-          uMetalness={metalness}
-          // Pass caustics uniforms
-          uCausticsFrequency={causticsFrequency}
-          uCausticsSpeed={causticsSpeed}
-          uCausticsIntensity={causticsIntensity}
-          uCausticsSharpness={causticsSharpness}
-          uCausticsEdgeThickness={causticsEdgeThickness}
-          uCausticsDistortionFrequency={causticsDistortionFrequency} // Pass new uniform
-          uCausticsDistortionAmplitude={causticsDistortionAmplitude} // Pass new uniform
+          uTexture={waterTexture}
+          uUseTexture={shaderControls.useTextureFlag && !!waterTexture}
+          uColor={new Color(shaderControls.waterColor)}
+          uOpacity={shaderControls.waterOpacity}
+          uNoiseFrequency={shaderControls.noiseFrequency}
+          uNoiseAmplitude={shaderControls.noiseAmplitude}
+          uNoiseSpeed={shaderControls.noiseSpeed}
+          uRoughness={shaderControls.roughness}
+          uMetalness={shaderControls.metalness}
+          uCausticsFrequency={shaderControls.causticsFrequency}
+          uCausticsSpeed={shaderControls.causticsSpeed}
+          uCausticsIntensity={shaderControls.causticsIntensity}
+          uCausticsSharpness={shaderControls.causticsSharpness}
+          uCausticsEdgeThickness={shaderControls.causticsEdgeThickness}
+          uCausticsDistortionFrequency={shaderControls.causticsDistortionFrequency}
+          uCausticsDistortionAmplitude={shaderControls.causticsDistortionAmplitude}
         />
       </mesh>
       <Sphere
-        ref={innerSphereRef}
-        args={[1.023, 128 * 4, 128 * 4]} // Adjust segments for smoother noise
+        args={innerSphereArgs}
         position={[0, 0, 0]}
         scale={1.7}
       />
-
       <mesh
         name="continent"
         geometry={nodes["optimized-verts"].geometry}

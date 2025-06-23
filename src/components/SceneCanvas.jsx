@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { Environment, Center, Float } from "@react-three/drei";
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useMemo } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
 // import { Perf } from "r3f-perf";
@@ -44,7 +44,181 @@ const localModelUrl = "/artist_workshop_100.hdr";
 const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/hdr/artist_workshop_100.hdr";
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
-console.log(`Loading model from: ${modelUrl}`);
+
+// Separate component for Leva controls to prevent re-renders
+function PostProcessingControls() {
+  const controls = useControls({
+    "Post Processing": {
+      collapsed: true,
+    },
+    bloomEnabled: {
+      value: true,
+      label: "Bloom Enabled",
+    },
+    bloomIntensity: {
+      value: 1,
+      min: 0,
+      max: 10,
+      step: 0.1,
+      label: "Bloom Intensity",
+    },
+    bloomLuminanceThreshold: {
+      value: 0.9,
+      min: 0,
+      max: 2,
+      step: 0.1,
+      label: "Bloom Threshold",
+    },
+    bloomLuminanceSmoothing: {
+      value: 0.025,
+      min: 0,
+      max: 1,
+      step: 0.001,
+      label: "Bloom Smoothing",
+    },
+    dofEnabled: {
+      value: false,
+      label: "Depth of Field Enabled",
+    },
+    dofFocusDistance: {
+      value: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "DOF Focus Distance",
+    },
+    dofFocalLength: {
+      value: 0.024,
+      min: 0,
+      max: 1,
+      step: 0.001,
+      label: "DOF Focal Length",
+    },
+    dofBokehScale: {
+      value: 2,
+      min: 0,
+      max: 10,
+      step: 0.1,
+      label: "DOF Bokeh Scale",
+    },
+    noiseEnabled: {
+      value: false,
+      label: "Noise Enabled",
+    },
+    noiseOpacity: {
+      value: 0.02,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "Noise Opacity",
+    },
+    vignetteEnabled: {
+      value: false,
+      label: "Vignette Enabled",
+    },
+    vignetteEskil: {
+      value: false,
+      label: "Vignette Eskil",
+    },
+    vignetteOffset: {
+      value: 0.5,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "Vignette Offset",
+    },
+    vignetteDarkness: {
+      value: 0.5,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "Vignette Darkness",
+    },
+    chromaticEnabled: {
+      value: false,
+      label: "Chromatic Aberration Enabled",
+    },
+    chromaticOffset: {
+      value: 0.003,
+      min: 0,
+      max: 0.01,
+      step: 0.001,
+      label: "Chromatic Offset",
+    },
+    glitchEnabled: {
+      value: false,
+      label: "Glitch Enabled",
+    },
+    glitchMode: {
+      options: ["constant", "wild"],
+      value: "constant",
+      label: "Glitch Mode",
+    },
+    glitchStrength: {
+      value: 0.3,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "Glitch Strength",
+    },
+    pixelationEnabled: {
+      value: false,
+      label: "Pixelation Enabled",
+    },
+    pixelationGranularity: {
+      value: 1,
+      min: 1,
+      max: 10,
+      step: 1,
+      label: "Pixelation Granularity",
+    },
+  });
+
+  return controls;
+}
+
+// Separate component for post-processing effects
+function PostProcessingEffects({ controls }) {
+  return (
+    <EffectComposer autoClear={false}>
+      {controls.bloomEnabled && (
+        <Bloom
+          intensity={controls.bloomIntensity}
+          luminanceThreshold={controls.bloomLuminanceThreshold}
+          luminanceSmoothing={controls.bloomLuminanceSmoothing}
+        />
+      )}
+
+      {controls.dofEnabled && (
+        <DepthOfField
+          focusDistance={controls.dofFocusDistance}
+          focalLength={controls.dofFocalLength}
+          bokehScale={controls.dofBokehScale}
+        />
+      )}
+
+      {controls.noiseEnabled && <Noise opacity={controls.noiseOpacity} />}
+
+      {controls.vignetteEnabled && (
+        <Vignette
+          eskil={controls.vignetteEskil}
+          offset={controls.vignetteOffset}
+          darkness={controls.vignetteDarkness}
+        />
+      )}
+
+      {controls.chromaticEnabled && <ChromaticAberration offset={controls.chromaticOffset} />}
+
+      {controls.glitchEnabled && (
+        <Glitch mode={controls.glitchMode} strength={controls.glitchStrength} />
+      )}
+
+      {controls.pixelationEnabled && (
+        <Pixelation granularity={controls.pixelationGranularity} />
+      )}
+    </EffectComposer>
+  );
+}
 
 export function SceneCanvas({ scrollContainerRef }) {
   const kreatonRef = useRef();
@@ -54,34 +228,14 @@ export function SceneCanvas({ scrollContainerRef }) {
   // const pointingFingerRef = useRef();
   const cdTextRef = useRef();
 
-  // Post-processing controls (flat, with folder)
-  const {
-    bloomEnabled,
-    bloomIntensity,
-    bloomLuminanceThreshold,
-    bloomLuminanceSmoothing,
-    dofEnabled,
-    dofFocusDistance,
-    dofFocalLength,
-    dofBokehScale,
-    noiseEnabled,
-    noiseOpacity,
-    vignetteEnabled,
-    vignetteEskil,
-    vignetteOffset,
-    vignetteDarkness,
-    chromaticEnabled,
-    chromaticOffset,
-    glitchEnabled,
-    glitchMode,
-    glitchStrength,
-    pixelationEnabled,
-    pixelationGranularity,
-  } = useControls({
-    "Post Processing": {
-      collapsed: true,
-    },
-  });
+  // Get post-processing controls from separate component
+  const postProcessingControls = PostProcessingControls();
+
+  // Memoize the model URL to prevent unnecessary recalculations
+  const memoizedModelUrl = useMemo(() => {
+    console.log(`Loading model from: ${modelUrl}`);
+    return modelUrl;
+  }, []);
 
   // Leva control for rocks active state
   useControls({
@@ -96,6 +250,13 @@ export function SceneCanvas({ scrollContainerRef }) {
     },
   });
 
+  // Memoize AnimatedStars props to prevent unnecessary re-renders
+  const starsProps = useMemo(() => ({
+    radius: 100,
+    depth: 50,
+    count: 2000 // Reduced from 5000 for better performance
+  }), []);
+
   return (
     <>
       {/* <Suspense fallback={<div>Loading 3D scene...</div>}> */}
@@ -103,11 +264,14 @@ export function SceneCanvas({ scrollContainerRef }) {
       <Canvas
         gl={{
           alpha: true,
-          // antialias: true,
-          // background: false,
-          // toneMapping: false,
+          antialias: false, // Disable antialiasing for better performance
+          powerPreference: "high-performance", // Prefer dedicated GPU
+          stencil: false, // Disable stencil buffer if not needed
+          depth: true,
         }}
-        dpr={1}
+        dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
+        //frameloop="demand" // Only render when needed
+        performance={{ min: 0.5 }} // Allow frame drops for better performance
         camera={{
           fov: 55,
           near: 0.1,
@@ -119,17 +283,13 @@ export function SceneCanvas({ scrollContainerRef }) {
           {/* <Perf position="top-left" /> */}
           {/* <Selection> */}
           {/* <Select enabled={true}> */}
-          <AnimatedStars
-            radius={100}
-            depth={50}
-            count={5000}
-          />
+          <AnimatedStars {...starsProps} />
 
           {/* <OrbitControls /> */}
 
           {/* <primitive object={new THREE.AxesHelper(5)} /> */}
 
-          <Environment files={modelUrl} />
+          <Environment files={memoizedModelUrl} />
           {/* <ambientLight intensity={0.1} /> */}
           <ErrorBoundary name="Earth2">
             <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
@@ -171,44 +331,7 @@ export function SceneCanvas({ scrollContainerRef }) {
 
           {/* <Rotator ref={rotatorRef} position={[0, -10, 0]} /> */}
 
-          <EffectComposer autoClear={false}>
-            {bloomEnabled && (
-              <Bloom
-                intensity={bloomIntensity}
-                luminanceThreshold={bloomLuminanceThreshold}
-                luminanceSmoothing={bloomLuminanceSmoothing}
-              />
-            )}
-
-            {dofEnabled && (
-              <DepthOfField
-                focusDistance={dofFocusDistance}
-                focalLength={dofFocalLength}
-                bokehScale={dofBokehScale}
-              />
-            )}
-
-            {noiseEnabled && <Noise opacity={noiseOpacity} />}
-
-            {vignetteEnabled && (
-              <Vignette
-                eskil={vignetteEskil}
-                offset={vignetteOffset}
-                darkness={vignetteDarkness}
-              />
-            )}
-
-            {chromaticEnabled && <ChromaticAberration offset={chromaticOffset} />}
-
-            {glitchEnabled && (
-              <Glitch mode={glitchMode} strength={glitchStrength} />
-            )}
-
-            {pixelationEnabled && (
-              <Pixelation granularity={pixelationGranularity} />
-            )}
-
-          </EffectComposer>
+          <PostProcessingEffects controls={postProcessingControls} />
           {/* </Selection> */}
           <AnimationManager
             kreatonRef={kreatonRef}

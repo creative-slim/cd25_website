@@ -7,7 +7,7 @@ Files: ./public/Kreaton_A.glb [10.88MB] > /Users/slim-cd/Documents/_Projects/__C
 import { useFrame, useGraph } from "@react-three/fiber";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
-import { LoopOnce, LoopRepeat } from "three"; // Import LoopOnce and LoopRepeat
+import { LoopOnce, LoopRepeat } from "three";
 import {
   playAnimationTransition,
   getCurrentAnimations,
@@ -16,8 +16,6 @@ import {
 } from "../utils/animationUtils";
 import { forwardRef } from "react";
 import { useImperativeHandle, useRef, useMemo, useEffect } from "react";
-// import { NodeToyMaterial, NodeToyTick } from "@nodetoy/react-nodetoy";
-// import { NodeToyMaterial } from "@nodetoy/three-nodetoy";
 import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
 import { TextureLoader, MeshStandardMaterial, RepeatWrapping } from "three";
@@ -27,6 +25,7 @@ import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 // Define model URLs
 const localModelUrl = "src/models/Kreaton_final-transformed.glb";
 const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb";
+const DEBUG_LOGS = process.env.NODE_ENV === 'development';
 
 const Kreaton = forwardRef((props, ref) => {
   const internalRef = useRef();
@@ -35,49 +34,42 @@ const Kreaton = forwardRef((props, ref) => {
   const clone = useMemo(() => SkeletonUtils.clone(scene), [scene]);
   const { nodes, materials } = useGraph(clone);
 
-  // const skinMaterial = new NodeToyMaterial({
-  //   url: "https://draft.nodetoy.co/cVZ6s0mHJroEdc8m",
-  // });
   // Load the texture
   const skinTexture = useLoader(TextureLoader, "https://files.creative-directors.com/creative-website/creative25/textures/seamless_skin_Small.jpeg");
 
-  // Configure texture wrapping for seamless animation
-  // _unused_assets / seamless_skin.png
-  useEffect(() => {
-    if (skinTexture) {
-      skinTexture.wrapS = RepeatWrapping;
-      skinTexture.wrapT = RepeatWrapping;
-      skinTexture.needsUpdate = true; // Important: Signal Three.js to update the texture settings
-    }
+  // Memoize the skin material to prevent it from being re-created on every render.
+  const skinMaterial = useMemo(() => {
+    if (!skinTexture) return null;
+
+    skinTexture.wrapS = RepeatWrapping;
+    skinTexture.wrapT = RepeatWrapping;
+    skinTexture.needsUpdate = true;
+
+    return new MeshStandardMaterial({
+      map: skinTexture,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
   }, [skinTexture]);
 
-  // Create a standard material with the texture
-  const skinMaterial = new MeshStandardMaterial({
-    map: skinTexture,
-    // You might want to adjust other material properties like roughness, metalness, etc.
-    // roughness: 0.7,
-    // metalness: 0.1,
-  });
-  materials.Skin = skinMaterial;
+  // Assign our custom and memoized materials to the graph.
+  // This is the correct and robust way to assign materials.
+  if (skinMaterial) {
+    materials.Skin = skinMaterial;
+  }
   materials.gold = kreatonGoldMaterial;
   materials.white = kreatonArmorMaterial;
 
-  const { actions, mixer } = useAnimations(animations, internalRef); // Get mixer
+  const { actions, mixer } = useAnimations(animations, internalRef);
 
   // Define what to expose to parent components through the ref
   useImperativeHandle(ref, () => {
-    // Create an instance to access our own methods inside other methods
     const instance = {
-      // Expose all available actions for flexibility
       actions,
-
-      // Get the current playing animation name
       getCurrentAnimation: () => {
         const playing = getCurrentAnimations(actions);
         return playing.length > 0 ? playing[0].name : null;
       },
-
-      // Specific animation control methods
       playAnimation: (name, options = {}) => {
         const action = actions[name];
         if (action) {
@@ -87,23 +79,18 @@ const Kreaton = forwardRef((props, ref) => {
             .play();
           return true;
         }
-        console.warn(`Animation "${name}" not found`);
+        if (DEBUG_LOGS) console.warn(`Animation "${name}" not found`);
         return false;
       },
-
       stopAnimation: (name, options = {}) => {
         const action = actions[name];
         if (action) {
-          // Ensure the action stops gracefully before fading out
-          action.stop(); // Add this line to stop the animation immediately
+          action.stop();
           action.fadeOut(options.fadeOut || 0.5);
-          // Optionally reset after fade out completes if needed, though fadeOut usually handles this
-          // setTimeout(() => action.reset(), (options.fadeOut || 0.5) * 1000);
           return true;
         }
         return false;
       },
-
       transitionAnimation: (fromName, toName, options = {}) => {
         return playAnimationTransition(
           actions,
@@ -115,41 +102,28 @@ const Kreaton = forwardRef((props, ref) => {
           actions[fromName]
         );
       },
-
-      // Transition from any currently playing animation to the target animation
       transitionFromCurrentToAnimation: (toName, options = {}) => {
-        // Use our own getCurrentAnimation method instead of the external function
         const currentAnimationName = instance.getCurrentAnimation();
-        const loopOnce = options.loopOnce || false; // Get loopOnce option
-        const onComplete = options.onComplete; // Get onComplete callback
+        const loopOnce = options.loopOnce || false;
+        const onComplete = options.onComplete;
 
-        // Still log details for debugging purposes
-        console.log("Animation detection debug:");
-        console.log("- Using getCurrentAnimation:", currentAnimationName);
-        console.log(
-          "- Raw getCurrentAnimations:",
-          getCurrentAnimations(actions).map((a) => a.name)
-        );
-        console.log(
-          "- Animations with weight > 0:",
-          Object.entries(actions)
-            .filter(([_, action]) => action.weight > 0)
-            .map(([name]) => `${name} (${actions[name].weight.toFixed(2)})`)
-        );
+        if (DEBUG_LOGS) {
+          console.log("Animation detection debug:");
+          console.log("- Using getCurrentAnimation:", currentAnimationName);
+          console.log("- Raw getCurrentAnimations:", getCurrentAnimations(actions).map((a) => a.name));
+          console.log("- Animations with weight > 0:", Object.entries(actions).filter(([_, action]) => action.weight > 0).map(([name]) => `${name} (${actions[name].weight.toFixed(2)})`));
+        }
 
-        // If current animation is the same as target, do nothing (unless forcing restart or loop change)
         if (currentAnimationName === toName && !options.forceRestart) {
           const action = actions[toName];
-          // Check if loop mode needs updating
           if (action && loopOnce && action.loop !== LoopOnce) {
-            console.log(`Updating loop mode for "${toName}" to LoopOnce.`);
+            if (DEBUG_LOGS) console.log(`Updating loop mode for "${toName}" to LoopOnce.`);
             action.setLoop(LoopOnce, 1);
             action.clampWhenFinished = true;
-            // Add listener if onComplete is provided
             if (onComplete) {
               const listener = (event) => {
                 if (event.action === action) {
-                  console.log(`LoopOnce animation "${toName}" completed.`);
+                  if (DEBUG_LOGS) console.log(`LoopOnce animation "${toName}" completed.`);
                   onComplete();
                   mixer.removeEventListener("finished", listener);
                 }
@@ -157,24 +131,18 @@ const Kreaton = forwardRef((props, ref) => {
               mixer.addEventListener("finished", listener);
             }
           } else if (action && !loopOnce && action.loop !== LoopRepeat) {
-            console.log(`Updating loop mode for "${toName}" to LoopRepeat.`);
+            if (DEBUG_LOGS) console.log(`Updating loop mode for "${toName}" to LoopRepeat.`);
             action.setLoop(LoopRepeat);
             action.clampWhenFinished = false;
           } else {
-            console.log(
-              `Already playing "${toName}" animation - no transition needed`
-            );
+            if (DEBUG_LOGS) console.log(`Already playing "${toName}" animation - no transition needed`);
           }
           return true;
         }
 
         if (!currentAnimationName) {
-          // If no animation is currently playing, clean up and start fresh
-          console.log(`No current animation detected, playing: ${toName}`);
-
-          // Reset all animation state first to clean up
+          if (DEBUG_LOGS) console.log(`No current animation detected, playing: ${toName}`);
           resetAnimationState(actions);
-
           const action = actions[toName];
           if (action) {
             action.enabled = true;
@@ -183,88 +151,69 @@ const Kreaton = forwardRef((props, ref) => {
             if (loopOnce) {
               action.setLoop(LoopOnce, 1);
               action.clampWhenFinished = true;
-              console.log(`Playing "${toName}" once.`);
-              // Add listener if onComplete is provided
+              if (DEBUG_LOGS) console.log(`Playing "${toName}" once.`);
               if (onComplete) {
                 const listener = (event) => {
                   if (event.action === action) {
-                    console.log(`LoopOnce animation "${toName}" completed.`);
+                    if (DEBUG_LOGS) console.log(`LoopOnce animation "${toName}" completed.`);
                     onComplete();
                     mixer.removeEventListener("finished", listener);
                   }
                 };
-                // Remove previous listeners for safety before adding new one
                 mixer.removeEventListener("finished", listener);
                 mixer.addEventListener("finished", listener);
               }
             } else {
-              action.setLoop(LoopRepeat); // Ensure it loops normally if not loopOnce
+              action.setLoop(LoopRepeat);
               action.clampWhenFinished = false;
-              console.log(`Playing "${toName}" on loop.`);
+              if (DEBUG_LOGS) console.log(`Playing "${toName}" on loop.`);
             }
-            action.fadeIn(options.fadeInDuration || 0.2).play(); // Use fadeInDuration
+            action.fadeIn(options.fadeInDuration || 0.2).play();
             return true;
           }
-          console.warn(`Animation "${toName}" not found`);
+          if (DEBUG_LOGS) console.warn(`Animation "${toName}" not found`);
           return false;
         }
 
-        console.log(`Transitioning from ${currentAnimationName} to ${toName}`);
-
-        // Full reset of all other animations to clean the state
-        stopAllAnimations(
-          actions,
-          [actions[toName], actions[currentAnimationName]],
-          true
-        );
-
-        // Simple transition - stop current, start new
+        if (DEBUG_LOGS) console.log(`Transitioning from ${currentAnimationName} to ${toName}`);
+        stopAllAnimations(actions, [actions[toName], actions[currentAnimationName]], true);
         const currentAction = actions[currentAnimationName];
         const toAction = actions[toName];
 
         if (currentAction && toAction) {
           currentAction.fadeOut(options.crossFadeTime || 0.5);
-
           toAction.enabled = true;
           toAction.weight = 1;
           toAction.reset();
           if (loopOnce) {
             toAction.setLoop(LoopOnce, 1);
             toAction.clampWhenFinished = true;
-            console.log(`Transitioning to "${toName}" once.`);
-            // Add listener if onComplete is provided
+            if (DEBUG_LOGS) console.log(`Transitioning to "${toName}" once.`);
             if (onComplete) {
               const listener = (event) => {
                 if (event.action === toAction) {
-                  console.log(`LoopOnce animation "${toName}" completed.`);
+                  if (DEBUG_LOGS) console.log(`LoopOnce animation "${toName}" completed.`);
                   onComplete();
                   mixer.removeEventListener("finished", listener);
                 }
               };
-              // Remove previous listeners for safety before adding new one
               mixer.removeEventListener("finished", listener);
               mixer.addEventListener("finished", listener);
             }
           } else {
-            toAction.setLoop(LoopRepeat); // Ensure it loops normally if not loopOnce
+            toAction.setLoop(LoopRepeat);
             toAction.clampWhenFinished = false;
-            console.log(`Transitioning to "${toName}" on loop.`);
+            if (DEBUG_LOGS) console.log(`Transitioning to "${toName}" on loop.`);
           }
-          toAction.fadeIn(options.fadeInDuration || 0.2); // Use fadeInDuration
+          toAction.fadeIn(options.fadeInDuration || 0.2);
           toAction.play();
           return true;
         }
 
-        console.warn(
-          `Animation transition failed: Current="${currentAnimationName}", Target="${toName}"`
-        );
+        if (DEBUG_LOGS) console.warn(`Animation transition failed: Current="${currentAnimationName}", Target="${toName}"`);
         return false;
       },
-
-      // List available animations
       getAnimationNames: () => Object.keys(actions),
-
-      // Access to the mesh for other operations
       getObject: () => internalRef.current,
     };
 
@@ -272,35 +221,22 @@ const Kreaton = forwardRef((props, ref) => {
   });
 
   useEffect(() => {
-    console.log("Available animations:", animations);
-    console.log("Available actions:", actions);
-    console.log("Action keys:", Object.keys(actions));
-
-    nodes.mixamorigHips.children[0].children[0].children[0].children[0].children[0].children[1].children[2].material =
-      skinMaterial;
-    nodes.mixamorigHips.children[0].children[0].children[0].children[0].children[0].children[1].children[1].material =
-      kreatonGoldMaterial;
-
-    nodes.mixamorigHips.children[0].children[0].children[0].children[0].children[0].children[1].children[0].material =
-      kreatonArmorMaterial;
-
+    if (DEBUG_LOGS) {
+      console.log("Available animations:", animations);
+      console.log("Available actions:", actions);
+      console.log("Action keys:", Object.keys(actions));
+    }
+    // Hardcoded material assignments (user confirmed model will not change)
+    nodes.mixamorigHips.children[0].children[0].children[0].children[0].children[0].children[1].children[2].material = skinMaterial;
+    nodes.mixamorigHips.children[0].children[0].children[0].children[0].children[0].children[1].children[1].material = kreatonGoldMaterial;
+    nodes.mixamorigHips.children[0].children[0].children[0].children[0].children[0].children[1].children[0].material = kreatonArmorMaterial;
     // Animation setup code...
-  }, [actions, animations, playAnimationTransition]);
+  }, []);
 
   useFrame((state, delta) => {
-    // Update the material properties or perform any other operations here
-    // For example, you can update the skinMaterial properties if needed
-    // Check if skinMaterial and its map exist and if the texture has loaded
-    if (skinMaterial && skinMaterial.map && skinMaterial.map.image) {
-      // Slowly move the texture offset, e.g., vertically
-      // Use delta for frame-rate independent speed
-      skinMaterial.map.rotation += delta * 0.1; // Adjust 0.1 for desired rotation speed
-
-      // Optional: Wrap the offset value to keep it between 0 and 1 if WrapT is set to RepeatWrapping
-      // skinMaterial.map.offset.y %= 1;
+    if (skinMaterial && skinMaterial.map) {
+      skinMaterial.map.rotation += delta * 0.1;
     }
-
-    // NodeToyMaterial.tick(); // UNUSED: NodeToyMaterial live update
   });
 
   return (

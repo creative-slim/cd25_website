@@ -7,16 +7,19 @@ import React, {
   forwardRef,
   useRef,
   useImperativeHandle,
+  useMemo,
   useEffect,
 } from "react";
 import { useGLTF } from "@react-three/drei";
 import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import * as THREE from "three";
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 
 // Define model URLs
 const localModelUrl = "src/models/CD_header_v1-transformed.glb";
 const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/CD_header_v1-transformed.glb";
+const DEBUG_LOGS = process.env.NODE_ENV === 'development';
 
 const Header_v1 = forwardRef((props, ref) => {
   const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
@@ -25,149 +28,115 @@ const Header_v1 = forwardRef((props, ref) => {
   const whiteMeshRefs = useRef([]);
   const goldOriginalRotations = useRef([]);
   const whiteOriginalRotations = useRef([]);
-  const timelineGoldRef = useRef(null);
-  const timelineWhiteRef = useRef(null);
   const pointLightRef = useRef();
 
-  useEffect(() => {
-    // Get mesh keys
-    const goldKeys = Object.keys(nodes).filter((key) => key.startsWith("Gold_") || key.startsWith("R_"));
-    const whiteKeys = Object.keys(nodes).filter(
+  // Memoize keys to prevent re-filtering on every render
+  const goldKeys = useMemo(
+    () => Object.keys(nodes).filter((key) => key.startsWith("Gold_") || key.startsWith("R_")),
+    [nodes]
+  );
+
+  const whiteKeys = useMemo(
+    () => Object.keys(nodes).filter(
       (key) =>
         key.startsWith("WhiteFont_") ||
         key.startsWith("OriginalCurveInternationalWHITE_")
-    );
+    ),
+    [nodes]
+  );
 
-    console.log("[Header_v1] goldKeys:", goldKeys);
-    console.log("[Header_v1] whiteKeys:", whiteKeys);
-    console.log("[Header_v1] goldMeshRefs.current:", goldMeshRefs.current);
-    console.log("[Header_v1] whiteMeshRefs.current:", whiteMeshRefs.current);
+  // Use GSAP's context-aware hook for safer animation management and cleanup
+  useGSAP(() => {
+    if (DEBUG_LOGS) {
+      console.log("[Header_v1] goldKeys:", goldKeys);
+      console.log("[Header_v1] whiteKeys:", whiteKeys);
+    }
 
     // Wait until all refs are populated
-    if (
-      goldMeshRefs.current.length !== goldKeys.length ||
-      whiteMeshRefs.current.length !== whiteKeys.length ||
-      goldMeshRefs.current.some((m) => !m) ||
-      whiteMeshRefs.current.some((m) => !m)
-    ) {
-      console.log("[Header_v1] Not all mesh refs are ready. Skipping animation trigger.");
+    const allGoldRefsReady = goldMeshRefs.current.length === goldKeys.length && goldMeshRefs.current.every(Boolean);
+    const allWhiteRefsReady = whiteMeshRefs.current.length === whiteKeys.length && whiteMeshRefs.current.every(Boolean);
+
+    if (!allGoldRefsReady || !allWhiteRefsReady) {
+      if (DEBUG_LOGS) console.log("[Header_v1] Not all mesh refs are ready. Skipping animation setup.");
       return;
     }
 
-    console.log("[Header_v1] All mesh refs are ready. Starting animation setup.");
+    if (DEBUG_LOGS) console.log("[Header_v1] All mesh refs are ready. Starting animation setup.");
 
-    // Store original rotations for gold meshes
-    goldOriginalRotations.current = goldKeys.map((key) => {
-      const rot = nodes[key].rotation || { x: 0, y: 0, z: 0 };
-      return { x: rot.x ?? 0, y: rot.y ?? 0, z: rot.z ?? 0 };
-    });
-    // Store original rotations for white meshes
-    whiteOriginalRotations.current = whiteKeys.map((key) => {
-      const rot = nodes[key].rotation || { x: 0, y: 0, z: 0 };
-      return { x: rot.x ?? 0, y: rot.y ?? 0, z: rot.z ?? 0 };
-    });
+    // Store original rotations
+    goldOriginalRotations.current = goldKeys.map((key) => nodes[key].rotation || new THREE.Euler());
+    whiteOriginalRotations.current = whiteKeys.map((key) => nodes[key].rotation || new THREE.Euler());
 
-    timelineGoldRef.current = gsap.timeline({ paused: true });
-    timelineWhiteRef.current = gsap.timeline({ paused: true });
+    // Set initial state
+    const allMeshes = [...goldMeshRefs.current, ...whiteMeshRefs.current];
+    gsap.set(allMeshes.map(m => m.scale), { x: 0, y: 0, z: 0 });
 
-    // Initial state for gold letters
     goldMeshRefs.current.forEach((mesh, i) => {
-      if (mesh) {
-        mesh.scale.set(0, 0, 0);
-        mesh.rotation.set(
-          goldOriginalRotations.current[i].x,
-          goldOriginalRotations.current[i].y + Math.PI * 2,
-          goldOriginalRotations.current[i].z
-        );
-        console.log(`[Header_v1] Gold mesh #${i} initial rotation:`, mesh.rotation, goldOriginalRotations.current[i]);
-      }
+      const originalRotation = goldOriginalRotations.current[i];
+      gsap.set(mesh.rotation, { y: originalRotation.y + Math.PI * 2 });
     });
 
-    // Initial state for white letters
     whiteMeshRefs.current.forEach((mesh, i) => {
-      if (mesh) {
-        mesh.scale.set(0, 0, 0);
-        mesh.rotation.set(
-          whiteOriginalRotations.current[i].x,
-          whiteOriginalRotations.current[i].y - Math.PI * 2,
-          whiteOriginalRotations.current[i].z
-        );
-        console.log(`[Header_v1] White mesh #${i} initial rotation:`, mesh.rotation, whiteOriginalRotations.current[i]);
-      }
+      const originalRotation = whiteOriginalRotations.current[i];
+      gsap.set(mesh.rotation, { y: originalRotation.y - Math.PI * 2 });
     });
 
-    // Animate gold letters with bounce stagger
-    gsap.to(goldMeshRefs.current.filter(Boolean).map(m => m.scale), {
+    // Animate in with stagger
+    gsap.to(allMeshes.map(m => m.scale), {
       x: 1,
       y: 1,
       z: 1,
       duration: 0.7,
       ease: "bounce.out",
       stagger: 0.1,
-      onStart: () => console.log(`[Header_v1] Animating gold mesh scale in (bounce staggered)`),
-      onComplete: () => console.log(`[Header_v1] Gold mesh scale animation complete (bounce staggered)`),
+      onStart: () => DEBUG_LOGS && console.log(`[Header_v1] Animating mesh scale in (bounce staggered)`),
+      onComplete: () => DEBUG_LOGS && console.log(`[Header_v1] Mesh scale animation complete (bounce staggered)`),
     });
 
-    // Animate white letters with bounce stagger
-    gsap.to(whiteMeshRefs.current.filter(Boolean).map(m => m.scale), {
-      x: 1,
-      y: 1,
-      z: 1,
-      duration: 0.7,
-      ease: "bounce.out",
-      stagger: 0.1,
-      onStart: () => console.log(`[Header_v1] Animating white mesh scale in (bounce staggered)`),
-      onComplete: () => console.log(`[Header_v1] White mesh scale animation complete (bounce staggered)`),
-    });
-
-    return () => {
-      gsap.killTweensOf(goldMeshRefs.current.filter(Boolean).map(m => m.scale));
-      gsap.killTweensOf(goldMeshRefs.current.filter(Boolean).map(m => m.rotation));
-      gsap.killTweensOf(whiteMeshRefs.current.filter(Boolean).map(m => m.scale));
-      gsap.killTweensOf(whiteMeshRefs.current.filter(Boolean).map(m => m.rotation));
-      console.log("[Header_v1] Cleaned up tweens");
-    };
-  }, [nodes, goldMeshRefs.current, whiteMeshRefs.current]);
+  }, { dependencies: [nodes, goldKeys, whiteKeys], scope: groupRef });
 
   // Expose animation controls to parent component
   useImperativeHandle(ref, () => ({
     playAnimation: () => {
+      if (DEBUG_LOGS) console.log("[Header_v1] playAnimation called");
       // Replay the show animation
-      gsap.to(goldMeshRefs.current.filter(Boolean).map(m => m.scale), {
+      const allMeshes = [...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean);
+      gsap.to(allMeshes.map(m => m.scale), {
         x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
       });
       gsap.to(goldMeshRefs.current.filter(Boolean).map((m, i) => m.rotation), {
-        y: (i) => goldOriginalRotations.current[i].y, duration: 0.8, ease: "power2.out", stagger: 0.1
-      });
-      gsap.to(whiteMeshRefs.current.filter(Boolean).map(m => m.scale), {
-        x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
+        y: (i) => goldOriginalRotations.current[i]?.y || 0, duration: 0.8, ease: "power2.out", stagger: 0.1
       });
       gsap.to(whiteMeshRefs.current.filter(Boolean).map((m, i) => m.rotation), {
-        y: (i) => whiteOriginalRotations.current[i].y, duration: 0.8, ease: "power2.out", stagger: 0.1
+        y: (i) => whiteOriginalRotations.current[i]?.y || 0, duration: 0.8, ease: "power2.out", stagger: 0.1
       });
     },
     reverseAnimation: () => {
+      if (DEBUG_LOGS) console.log("[Header_v1] reverseAnimation called");
       // Animate all letters out (scale to 0)
-      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean).map(m => m.scale), {
+      const allMeshes = [...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean);
+      gsap.to(allMeshes.map(m => m.scale), {
         x: 0, y: 0, z: 0, duration: 0.5, ease: "power2.in", stagger: 0.05
       });
     },
     hide: () => {
-      gsap.to([...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean).map(m => m.scale), {
+      if (DEBUG_LOGS) console.log("[Header_v1] hide called");
+      const allMeshes = [...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean);
+      gsap.to(allMeshes.map(m => m.scale), {
         x: 0, y: 0, z: 0, duration: 0.3, ease: "power2.in", stagger: 0.05
       });
     },
     show: () => {
+      if (DEBUG_LOGS) console.log("[Header_v1] show called");
       // Show with staggered effect
-      gsap.to(goldMeshRefs.current.filter(Boolean).map(m => m.scale), {
-        x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
-      });
-      gsap.to(whiteMeshRefs.current.filter(Boolean).map(m => m.scale), {
+      const allMeshes = [...goldMeshRefs.current, ...whiteMeshRefs.current].filter(Boolean);
+      gsap.to(allMeshes.map(m => m.scale), {
         x: 1, y: 1, z: 1, duration: 0.8, ease: "elastic.out(1, 0.5)", stagger: 0.1
       });
     },
     moveUp: (y = 1) => {
       if (groupRef.current) {
+        if (DEBUG_LOGS) console.log(`[Header_v1] moveUp called with y=${y}`);
         gsap.to(groupRef.current.position, {
           y: groupRef.current.position.y + y,
           duration: 1.2,
@@ -176,29 +145,32 @@ const Header_v1 = forwardRef((props, ref) => {
       }
     },
     resetAnimation: () => {
+      if (DEBUG_LOGS) console.log("[Header_v1] resetAnimation called");
       // Instantly reset all letters to initial state
       goldMeshRefs.current.forEach((mesh, i) => {
         if (mesh) {
+          const originalRotation = goldOriginalRotations.current[i] || { x: 0, y: 0, z: 0 };
           mesh.scale.set(0, 0, 0);
           mesh.rotation.set(
-            goldOriginalRotations.current[i].x,
-            goldOriginalRotations.current[i].y + Math.PI * 2,
-            goldOriginalRotations.current[i].z
+            originalRotation.x,
+            originalRotation.y + Math.PI * 2,
+            originalRotation.z
           );
         }
       });
       whiteMeshRefs.current.forEach((mesh, i) => {
         if (mesh) {
+          const originalRotation = whiteOriginalRotations.current[i] || { x: 0, y: 0, z: 0 };
           mesh.scale.set(0, 0, 0);
           mesh.rotation.set(
-            whiteOriginalRotations.current[i].x,
-            whiteOriginalRotations.current[i].y - Math.PI * 2,
-            whiteOriginalRotations.current[i].z
+            originalRotation.x,
+            originalRotation.y - Math.PI * 2,
+            originalRotation.z
           );
         }
       });
       if (groupRef.current) {
-        groupRef.current.position.y = 0;
+        gsap.set(groupRef.current.position, { y: 0 });
       }
     },
     getGroupRef: () => groupRef.current,
@@ -206,54 +178,29 @@ const Header_v1 = forwardRef((props, ref) => {
 
   // Render all meshes and collect refs
   return (
-    // <group {...props} dispose={null}>
-    //   <mesh geometry={nodes.Gold_International.geometry} material={materials.gold} rotation={[Math.PI / 2, 0, 0]} />
-    //   <mesh geometry={nodes.WhiteFont_OnTop.geometry} material={materials.white} position={[-0.261, 0.058, 0.004]} rotation={[Math.PI / 2, 0, 0]} />
-    // </group>
     <group {...props} dispose={null} ref={groupRef}>
 
-      {Object.keys(nodes)
-        .filter((key) => key.startsWith("Gold_") || key.startsWith("R_"))
-        .map((key, i) => (
-          <mesh
-            key={key}
-            ref={(el) => {
-              goldMeshRefs.current[i] = el;
-              if (el) console.log(`[Header_v1] Gold mesh ref set for #${i}:`, el);
-            }}
-            geometry={nodes[key].geometry}
-            material={materials.gold}
-            position={nodes[key].position}
-            rotation={nodes[key].rotation}
-          />
-        ))}
+      {goldKeys.map((key, i) => (
+        <mesh
+          key={key}
+          ref={(el) => (goldMeshRefs.current[i] = el)}
+          geometry={nodes[key].geometry}
+          material={materials.gold}
+          position={nodes[key].position}
+          rotation={nodes[key].rotation}
+        />
+      ))}
 
-      {Object.keys(nodes)
-        .filter(
-          (key) =>
-            key.startsWith("WhiteFont_") ||
-            key.startsWith("OriginalCurveInternationalWHITE_")
-        )
-        .map((key, i) => (
-          <mesh
-            key={key}
-            ref={(el) => {
-              whiteMeshRefs.current[i] = el;
-              if (el) console.log(`[Header_v1] White mesh ref set for #${i}:`, el);
-            }}
-            geometry={nodes[key].geometry}
-            material={materials.white}
-            // material={
-            //   new THREE.MeshStandardMaterial({
-            //     color: "white",
-            //     emissive: "white",
-            //     emissiveIntensity: 0.5,
-            //   })
-            // }
-            rotation={nodes[key].rotation}
-            position={nodes[key].position}
-          />
-        ))}
+      {whiteKeys.map((key, i) => (
+        <mesh
+          key={key}
+          ref={(el) => (whiteMeshRefs.current[i] = el)}
+          geometry={nodes[key].geometry}
+          material={materials.white}
+          rotation={nodes[key].rotation}
+          position={nodes[key].position}
+        />
+      ))}
     </group>
   );
 });

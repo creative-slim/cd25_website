@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, RefObject } from "react";
+import { useEffect, useRef, useState, useCallback, RefObject, useMemo } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useThree } from "@react-three/fiber";
@@ -11,7 +11,7 @@ import { useGSAP } from "@gsap/react"; // Import useGSAP
 gsap.registerPlugin(ScrollTrigger);
 
 // Debug flag to control all console logs
-const DEBUG_LOGS = import.meta.env.DEV;
+const DEBUG_LOGS = process.env.NODE_ENV === 'development';
 
 // FOV Constants
 const DEFAULT_FOV = 55;
@@ -30,7 +30,7 @@ const logStyles = {
   scrollTrigger: "color: #f542c8; font-weight: bold;",
 };
 
-// Simplified logging system
+// Simplified logging system with performance optimization
 const createLogger = (mainTimeline) => {
   // Function to get formatted timeline time
   const getTimeInfo = () => {
@@ -40,9 +40,17 @@ const createLogger = (mainTimeline) => {
     return `[T:${time}s/${totalTime}s]`;
   };
 
-  // Generic log function
+  // Generic log function with throttling for performance
+  let lastLogTime = 0;
+  const LOG_THROTTLE = 100; // ms
+
   return (type, msg, ...args) => {
     if (!DEBUG_LOGS && type !== "error") return;
+
+    // Throttle frequent logs to improve performance
+    const now = Date.now();
+    if (type !== "error" && now - lastLogTime < LOG_THROTTLE) return;
+    lastLogTime = now;
 
     const mainTime = getTimeInfo();
     const style = logStyles[type] || "";
@@ -116,48 +124,83 @@ export function AnimationManager({
   const initializedRef = useRef<boolean>(false);
   const initialAnimationPlayedRef = useRef<boolean>(false);
 
+  // Memoize refs to prevent unnecessary re-renders
+  const memoizedRefs = useMemo(() => ({
+    kreatonRef,
+    earthRef,
+    rotatorRef,
+    clumpRef,
+    pointingFingerRef,
+    cdTextRef,
+  }), [kreatonRef, earthRef, rotatorRef, clumpRef, pointingFingerRef, cdTextRef]);
+
   // Reset state when component mounts
   useEffect(() => {
     hasPushedRef.current = false;
     initialAnimationPlayedRef.current = false;
-    logRef.current(
-      "system",
-      "🚀 ANIMATION MANAGER MOUNTED - PUSH state reset:",
-      {
-        hasPushedRef: hasPushedRef.current,
-        initialAnimationPlayed: initialAnimationPlayedRef.current
-      }
-    );
+    if (DEBUG_LOGS) {
+      logRef.current(
+        "system",
+        "🚀 ANIMATION MANAGER MOUNTED - PUSH state reset:",
+        {
+          hasPushedRef: hasPushedRef.current,
+          initialAnimationPlayed: initialAnimationPlayedRef.current
+        }
+      );
+    }
   }, []);
 
   // Initialize logger when timeline is created
-  const updateLogger = (timeline) => {
+  const updateLogger = useCallback((timeline) => {
     logRef.current = createLogger(timeline);
-  };
+  }, []);
 
   // Functions to control Earth rotation
   const startEarthRotation = useCallback(() => {
-    logRef.current("system", "Starting Earth rotation");
+    if (DEBUG_LOGS) logRef.current("system", "Starting Earth rotation");
     setIsEarthRotating(true);
   }, []);
 
   const stopEarthRotation = useCallback(() => {
-    logRef.current("system", "Stopping Earth rotation");
+    if (DEBUG_LOGS) logRef.current("system", "Stopping Earth rotation");
     setIsEarthRotating(false);
   }, []);
+
+  // Earth rotation setup - optimized with useCallback
+  const rotateEarth = useCallback(() => {
+    if (earthRef.current && isEarthRotating) {
+      const rotationSpeed = (Math.PI * 2) / 60;
+      earthRef.current.rotation.x -= rotationSpeed / 60;
+    }
+  }, [earthRef, isEarthRotating]);
+
+  useEffect(() => {
+    if (earthRef.current) {
+      earthRotationRef.current = rotateEarth;
+      gsap.ticker.add(rotateEarth);
+      return () => {
+        if (earthRotationRef.current) {
+          gsap.ticker.remove(earthRotationRef.current);
+          earthRotationRef.current = null;
+        }
+      };
+    }
+  }, [rotateEarth]);
 
   // Simplified rotator function
   const rotatorX = useCallback(
     (x) => {
-      logRef.current("system", "Moving rotator up");
+      if (DEBUG_LOGS) logRef.current("system", "Moving rotator up");
       if (rotatorRef.current?.moveY) {
         rotatorRef.current.moveY(x, {
           duration: 1,
           ease: "power2.out",
-          onStart: () =>
-            logRef.current("animation", "Rotator animation started"),
-          onComplete: () =>
-            logRef.current("animation", "Rotator animation completed"),
+          onStart: () => {
+            if (DEBUG_LOGS) logRef.current("animation", "Rotator animation started");
+          },
+          onComplete: () => {
+            if (DEBUG_LOGS) logRef.current("animation", "Rotator animation completed");
+          },
         });
       } else {
         logRef.current("error", "Rotator ref or moveY method not available");
@@ -374,7 +417,7 @@ export function AnimationManager({
     return timeline;
   }, []);
 
-  // Check if all models are ready
+  // Check if all models are ready - optimized with longer interval
   useEffect(() => {
     const areModelsReady =
       kreatonRef.current &&
@@ -384,11 +427,13 @@ export function AnimationManager({
       clumpRef.current;
 
     if (areModelsReady) {
-      logRef.current(
-        "model",
-        "All models are ready. Kreaton actions:",
-        kreatonRef.current.getAnimationNames()
-      );
+      if (DEBUG_LOGS) {
+        logRef.current(
+          "model",
+          "All models are ready. Kreaton actions:",
+          kreatonRef.current.getAnimationNames()
+        );
+      }
       setModelReady(true);
     } else {
       const checkModels = setInterval(() => {
@@ -400,58 +445,38 @@ export function AnimationManager({
           clumpRef.current;
 
         if (allReady) {
-          logRef.current(
-            "model",
-            "All models initialized. Kreaton actions:",
-            kreatonRef.current.getAnimationNames()
-          );
+          if (DEBUG_LOGS) {
+            logRef.current(
+              "model",
+              "All models initialized. Kreaton actions:",
+              kreatonRef.current.getAnimationNames()
+            );
+          }
           setModelReady(true);
           clearInterval(checkModels);
         }
-      }, 100); // Check every 100ms
+      }, 250); // Increased from 100ms to 250ms for better performance
 
       return () => clearInterval(checkModels);
     }
   }, [kreatonRef, earthRef, rotatorRef, clumpRef]);
-
-  // Earth rotation setup
-  useEffect(() => {
-    if (earthRef.current) {
-      const rotationSpeed = (Math.PI * 2) / 60;
-
-      const rotateEarth = () => {
-        if (earthRef.current && isEarthRotating) {
-          earthRef.current.rotation.x -= rotationSpeed / 60;
-        }
-      };
-
-      earthRotationRef.current = rotateEarth;
-      gsap.ticker.add(rotateEarth);
-      return () => {
-        if (earthRotationRef.current) {
-          gsap.ticker.remove(earthRotationRef.current);
-          earthRotationRef.current = null;
-        }
-      };
-    }
-  }, [earthRef, isEarthRotating]); // Corrected dependencies
 
   // Setup animation timeline with ScrollTrigger using useGSAP
   useGSAP(
     () => {
       // Double-mount guard for dev/StrictMode
       if (initializedRef.current) {
-        console.log("AnimationManager: Already initialized, skipping setup.");
+        if (DEBUG_LOGS) console.log("AnimationManager: Already initialized, skipping setup.");
         return;
       }
 
       if (!modelReady) {
-        console.log("AnimationManager: modelReady is false, skipping setup.");
+        if (DEBUG_LOGS) console.log("AnimationManager: modelReady is false, skipping setup.");
         return;
       }
 
       initializedRef.current = true; // Only set after modelReady is true
-      console.log("AnimationManager: useGSAP running, modelReady is true, initializing timeline.");
+      if (DEBUG_LOGS) console.log("AnimationManager: useGSAP running, modelReady is true, initializing timeline.");
 
       function kreatonTransitionFromCurrentToAnimation(animation: string) {
         kreatonRef.current.transitionFromCurrentToAnimation(animation, {
@@ -470,23 +495,27 @@ export function AnimationManager({
       mainTimelineRef.current = mainTimeline; // Assign to ref
       updateLogger(mainTimeline); // Initialize logger with the timeline
 
-      logRef.current(
-        "system",
-        `PUSH animation state: hasPushedRef=${hasPushedRef.current}`
-      );
-      logRef.current(
-        "system",
-        "Setting up animation timeline with actions:",
-        kreatonRef.current.getAnimationNames()
-      );
+      if (DEBUG_LOGS) {
+        logRef.current(
+          "system",
+          `PUSH animation state: hasPushedRef=${hasPushedRef.current}`
+        );
+        logRef.current(
+          "system",
+          "Setting up animation timeline with actions:",
+          kreatonRef.current.getAnimationNames()
+        );
+      }
 
       const animations = kreatonRef.current.getAnimationNames();
       setCameraTarget({ x: 0, y: 1, z: 0 }, { duration: 1 });
-      logRef.current(
-        "system",
-        "Initial camera setup - Camera looking at:",
-        cameraTargetRef.current.toArray()
-      );
+      if (DEBUG_LOGS) {
+        logRef.current(
+          "system",
+          "Initial camera setup - Camera looking at:",
+          cameraTargetRef.current.toArray()
+        );
+      }
 
       /*
       Initial animation setup - plays without scrolling
@@ -1126,12 +1155,7 @@ export function AnimationManager({
       dependencies: [
         camera,
         modelReady,
-        kreatonRef,
-        earthRef,
-        rotatorRef,
-        clumpRef,
-        pointingFingerRef,
-        cdTextRef,
+        memoizedRefs, // Use memoized refs instead of individual refs
         startEarthRotation,
         stopEarthRotation,
         rotatorX,

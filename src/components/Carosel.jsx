@@ -9,6 +9,7 @@ import {
   useImperativeHandle,
   useEffect,
   useCallback,
+  memo,
 } from "react";
 // Import useThree
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
@@ -25,6 +26,8 @@ import RainbowConnector from './RainbowConnector';
 const NUM_CARDS_TO_DISPLAY = 6;
 // Define the radius of the circle for card placement
 const radius = 4;
+// Debug flag
+const DEBUG_LOGS = process.env.NODE_ENV === 'development';
 
 // API Configuration
 const API_CONFIG = {
@@ -53,11 +56,11 @@ const useCarouselData = () => {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Error fetching image data:", error);
+      if (DEBUG_LOGS) console.error("Error fetching image data:", error);
 
       // Implement retry logic
       if (retryCount < API_CONFIG.maxRetries) {
-        console.log(`Retrying fetch (${retryCount + 1}/${API_CONFIG.maxRetries})...`);
+        if (DEBUG_LOGS) console.log(`Retrying fetch (${retryCount + 1}/${API_CONFIG.maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
         return fetchImageData(webhookUrl, retryCount + 1);
       }
@@ -81,7 +84,7 @@ const useCarouselData = () => {
           setData(endpointResponse.slice(0, NUM_CARDS_TO_DISPLAY));
         }
       } catch (error) {
-        console.error("Error fetching carousel data:", error);
+        if (DEBUG_LOGS) console.error("Error fetching carousel data:", error);
         if (isMounted) {
           setError(error.message);
           setData([]);
@@ -138,57 +141,8 @@ function Carousel({
   });
 }
 
-// Custom shader for morphing between square and circle
-const morphShader = {
-  uniforms: {
-    time: { value: 0 },
-    morphProgress: { value: 0 },
-    imageTexture: { value: null }
-  },
-  vertexShader: `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform float time;
-    uniform float morphProgress;
-    uniform sampler2D imageTexture;
-    varying vec2 vUv;
-
-    void main() {
-      // Center the UV coordinates
-      vec2 centeredUv = vUv * 2.0 - 1.0;
-      
-      // Calculate distance from center
-      float dist = length(centeredUv);
-      
-      // Calculate the morphing factor
-      float morphFactor = smoothstep(0.0, 1.0, morphProgress);
-      
-      // Mix between square and circle based on morphFactor
-      float shape = mix(
-        max(abs(centeredUv.x), abs(centeredUv.y)), // Square
-        dist, // Circle
-        morphFactor
-      );
-      
-      // Create the mask
-      float mask = smoothstep(1.0, 0.99, shape);
-      
-      // Sample the texture
-      vec4 texColor = texture2D(imageTexture, vUv);
-      
-      // Apply the mask
-      gl_FragColor = vec4(texColor.rgb, texColor.a * mask);
-    }
-  `
-};
-
 // Accept and call hover handlers
-function Card({
+const Card = memo(({
   url,
   index,
   data,
@@ -196,13 +150,12 @@ function Card({
   onHoverEnd,
   onViewChange,
   ...props
-}) {
+}) => {
   const ref = useRef();
   const [hovered, hover] = useState(false);
   const texture = useTexture(url);
-  const [isCircle, setIsCircle] = useState(false);
 
-  const pointerOver = (e) => {
+  const pointerOver = useCallback((e) => {
     e.stopPropagation();
     hover(true);
     onHoverStart?.();
@@ -214,10 +167,9 @@ function Card({
       duration: 1,
       ease: "power2.out"
     });
-    setIsCircle(true);
-  };
+  }, [onHoverStart]);
 
-  const pointerOut = () => {
+  const pointerOut = useCallback(() => {
     hover(false);
     onHoverEnd?.();
     // Animate back to square
@@ -228,8 +180,7 @@ function Card({
       duration: 1,
       ease: "power2.out"
     });
-    setIsCircle(false);
-  };
+  }, [onHoverEnd]);
 
   return (
     <group {...props}>
@@ -252,11 +203,7 @@ function Card({
         userData={{ index, data }}
         scale={[1.3, 1.3, 1.3]}
       >
-        {isCircle ? (
-          <circleGeometry args={[0.65, 64]} />
-        ) : (
-          <circleGeometry args={[0.65, 64]} />
-        )}
+        <circleGeometry args={[0.65, 64]} />
         <meshBasicMaterial
           map={texture}
           transparent
@@ -265,13 +212,14 @@ function Card({
       </mesh>
     </group>
   );
-}
+});
 
 export const Rotator = forwardRef(({ ...props }, ref) => {
   const { data: carouselData, isLoading, error } = useCarouselData();
   const [isVisible, setIsVisible] = useState(true);
   const [isObserverActive, setIsObserverActive] = useState(false); // New state for observer control
   const carouselRef = useRef();
+  const frameCountRef = useRef(0);
   const opacityRef = useRef(1);
   const isDraggingRef = useRef(false);
   const prevXRef = useRef(0);
@@ -354,7 +302,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
     const allProjectElements = document.querySelectorAll("[data-projects]");
     allProjectElements.forEach((el) => {
       if (el.classList.contains("active")) {
-        console.log("[CAROUSEL] Removing 'active' class from:", el);
+        if (DEBUG_LOGS) console.log("[CAROUSEL] Removing 'active' class from:", el);
       }
       el.classList.remove("active");
     });
@@ -364,7 +312,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   const updateActiveElements = useCallback(
     (cardData) => {
       if (!cardData?.slug || !isObserverActive) { // Check if observer is active
-        console.log("[CAROUSEL] updateActiveElements: No cardData or observer inactive, clearing active classes.");
+        if (DEBUG_LOGS) console.log("[CAROUSEL] updateActiveElements: No cardData or observer inactive, clearing active classes.");
         clearActiveProjectClasses();
         return;
       }
@@ -377,16 +325,16 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
         const allProjectElements = document.querySelectorAll("[data-projects]");
         allProjectElements.forEach((el) => {
           if (el.classList.contains("active")) {
-            console.log("[CAROUSEL] Removing 'active' class from:", el);
+            if (DEBUG_LOGS) console.log("[CAROUSEL] Removing 'active' class from:", el);
           }
           el.classList.remove("active");
         });
 
         // Add 'active' class to the element matching the current card
         targetElement.classList.add("active");
-        console.log("[CAROUSEL] Adding 'active' class to:", targetElement);
+        if (DEBUG_LOGS) console.log("[CAROUSEL] Adding 'active' class to:", targetElement);
       } else {
-        console.log("[CAROUSEL] updateActiveElements: Target element not found, clearing active classes.");
+        if (DEBUG_LOGS) console.log("[CAROUSEL] updateActiveElements: Target element not found, clearing active classes.");
         clearActiveProjectClasses();
       }
     },
@@ -517,6 +465,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Apply damping and auto-rotation in the render loop with enhanced view detection
   useFrame(() => {
     if (!carouselRef.current) return;
+    frameCountRef.current++;
 
     // Handle rotation logic
     if (!isDraggingRef.current) {
@@ -534,25 +483,28 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
     }
 
     // Check which card is currently visible (run on every frame for continuous observation)
-    const visibleCardData = determineVisibleCard();
+    // Throttle the expensive visibility check to run every 10 frames
+    if (frameCountRef.current % 10 === 0) {
+      const visibleCardData = determineVisibleCard();
 
-    // If we have a visible card, handle the view change
-    if (visibleCardData) {
-      // Check if the visible card has changed OR if this is initial detection
-      if (
-        !lastVisibleCardRef.current ||
-        lastVisibleCardRef.current.index !== visibleCardData.index
-      ) {
-        // Update the last visible card reference
-        lastVisibleCardRef.current = visibleCardData;
-        // Trigger the view change handler
-        handleCardViewChange(visibleCardData.data);
-      }
-    } else {
-      // No card is in view, clear the active classes
-      if (lastVisibleCardRef.current) {
-        clearActiveProjectClasses();
-        lastVisibleCardRef.current = null;
+      // If we have a visible card, handle the view change
+      if (visibleCardData) {
+        // Check if the visible card has changed OR if this is initial detection
+        if (
+          !lastVisibleCardRef.current ||
+          lastVisibleCardRef.current.index !== visibleCardData.index
+        ) {
+          // Update the last visible card reference
+          lastVisibleCardRef.current = visibleCardData;
+          // Trigger the view change handler
+          handleCardViewChange(visibleCardData.data);
+        }
+      } else {
+        // No card is in view, clear the active classes
+        if (lastVisibleCardRef.current) {
+          clearActiveProjectClasses();
+          lastVisibleCardRef.current = null;
+        }
       }
     }
   });
@@ -560,13 +512,13 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Remove useEffect for canvas hover state
 
   // Handlers for card hover events
-  const handleCardHoverStart = () => {
+  const handleCardHoverStart = useCallback(() => {
     hoveredCardCountRef.current++;
-  };
+  }, []);
 
-  const handleCardHoverEnd = () => {
+  const handleCardHoverEnd = useCallback(() => {
     hoveredCardCountRef.current = Math.max(0, hoveredCardCountRef.current - 1); // Prevent negative count
-  };
+  }, []);
 
   // Renamed handler for clarity
   const handleWindowPointerMove = (e) => {
@@ -592,7 +544,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Renamed handler for clarity
   const handleWindowPointerUp = (e) => {
     if (isDraggingRef.current) {
-      console.log("Rotator: Window Pointer Up");
+      if (DEBUG_LOGS) console.log("Rotator: Window Pointer Up");
       isDraggingRef.current = false; // Update ref
       gl.domElement.style.cursor = "grab"; // Restore cursor
 
@@ -625,7 +577,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
   const handlePointerDown = (e) => {
     e.stopPropagation(); // Prevent interfering with other interactions ON the element
-    console.log("Rotator: Pointer Down on Group", e.clientX);
+    if (DEBUG_LOGS) console.log("Rotator: Pointer Down on Group", e.clientX);
     isDraggingRef.current = true; // Update ref
     prevXRef.current = e.clientX; // Update ref
     velocityRef.current = 0; // Stop any existing damping
