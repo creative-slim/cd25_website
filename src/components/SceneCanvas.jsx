@@ -3,7 +3,7 @@ import { Environment, Center, Float } from "@react-three/drei";
 import { Suspense, lazy, useMemo } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
-// import { Perf } from "r3f-perf";
+import { Perf } from "r3f-perf";
 import { useControls, Leva } from "leva";
 import ErrorBoundary from "./ErrorBoundary";
 
@@ -259,45 +259,94 @@ export function SceneCanvas({ scrollContainerRef }) {
 
   return (
     <>
-      {/* <Suspense fallback={<div>Loading 3D scene...</div>}> */}
-      {isDevelopment && <Leva collapsed={true} />}
-      <Canvas
-        gl={{
-          alpha: true,
-          antialias: false, // Disable antialiasing for better performance
-          powerPreference: "high-performance", // Prefer dedicated GPU
-          stencil: false, // Disable stencil buffer if not needed
-          depth: true,
-        }}
-        dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
-        //frameloop="demand" // Only render when needed
-        performance={{ min: 0.5 }} // Allow frame drops for better performance
-        camera={{
-          fov: 55,
-          near: 0.1,
-          far: 1000,
-          position: [0, 0.5, 4],
-        }}
-      >
-        <Suspense fallback={null}>
-          {/* <Perf position="top-left" /> */}
-          {/* <Selection> */}
-          {/* <Select enabled={true}> */}
-          <AnimatedStars {...starsProps} />
+      <Suspense fallback={<div>Loading 3D scene...</div>}>
+        {isDevelopment && <Leva collapsed={true} />}
+        <Canvas
+          gl={{
+            alpha: true,
+            antialias: false, // Disable antialiasing for better performance
+            powerPreference: "high-performance", // Prefer dedicated GPU
+            stencil: false, // Disable stencil buffer if not needed
+            depth: true,
+          }}
+          dpr={1}
+          // dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
+          // frameloop="demand" // Only render when needed
+          performance={{ min: 0.5 }} // Allow frame drops for better performance
+          camera={{
+            fov: 55,
+            near: 0.1,
+            far: 1000,
+            position: [0, 0.5, 4],
+          }}
+        >
+          <Suspense name="AnimatedStars" fallback={null}>
+            <AnimatedStars {...starsProps} />
+          </Suspense>
+          <Suspense name="Environment" fallback={null}>
+            <Environment files={memoizedModelUrl} />
+          </Suspense>
+          <Suspense name="Earth2" fallback={null}>
+            <ErrorBoundary name="Earth2">
+              <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
+            </ErrorBoundary>
+          </Suspense>
+          <Suspense name="Kreaton" fallback={null}>
+            <ErrorBoundary name="Kreaton">
+              <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
+            </ErrorBoundary>
+          </Suspense>
+          <Suspense name="Header_v1" fallback={null}>
+            <Center position={[0, 2, 0]}>
+              <Float speed={1} rotationIntensity={0.5} floatIntensity={2}>
+                <ErrorBoundary name="Header_v1">
+                  <Header_v1
+                    ref={cdTextRef}
+                    scale={10}
+                  />
+                </ErrorBoundary>
+              </Float>
+            </Center>
+          </Suspense>
+          <Suspense name="Rocks" fallback={null}>
+            <Physics>
+              <ErrorBoundary name="Rocks">
+                <Rocks
+                  ref={rocksRef}
+                  position={[0, 0, 0]}
 
-          {/* <OrbitControls /> */}
+                />
+              </ErrorBoundary>
+            </Physics>
+          </Suspense>
+          <Suspense name="Rotator" fallback={null}>
+            <ErrorBoundary name="Rotator">
+              <Rotator ref={rotatorRef} position={[0, -10, 0]} />
+            </ErrorBoundary>
+          </Suspense>
+          <Suspense name="PostProcessingEffects" fallback={null}>
+            <PostProcessingEffects controls={postProcessingControls} />
+          </Suspense>
+          <Suspense name="AnimationManager" fallback={null}>
+            <AnimationManager
+              kreatonRef={kreatonRef}
+              earthRef={earthRef}
+              rotatorRef={rotatorRef}
+              clumpRef={rocksRef}
+              cdTextRef={cdTextRef}
+              scrollContainerRef={scrollContainerRef}
+            />
+          </Suspense>
 
-          {/* <primitive object={new THREE.AxesHelper(5)} /> */}
-
-          <Environment files={memoizedModelUrl} />
-          {/* <ambientLight intensity={0.1} /> */}
-          <ErrorBoundary name="Earth2">
-            <Earth2 ref={earthRef} position={[0, -1.86, 0]} />
-          </ErrorBoundary>
-          <ErrorBoundary name="Kreaton">
-            <Kreaton ref={kreatonRef} position={[0, 0.02, 0.5]} />
-          </ErrorBoundary>
-          {/* <ErrorBoundary name="PointingFinger">
+          <group name="commented-out">
+            {/* <Suspense fallback={null}> */}
+            <Perf position="top-left" />
+            {/* <Selection> */}
+            {/* <Select enabled={true}> */}
+            {/* <OrbitControls /> */}
+            {/* <primitive object={new THREE.AxesHelper(5)} /> */}
+            {/* <ambientLight intensity={0.1} /> */}
+            {/* <ErrorBoundary name="PointingFinger">
             <PointingFinger
               ref={pointingFingerRef}
               position={[-0.2, -0.7, 2.4]}
@@ -305,51 +354,17 @@ export function SceneCanvas({ scrollContainerRef }) {
               visible={false}
             />
           </ErrorBoundary> */}
-          <Center position={[0, 2, 0]}>
-            <Float speed={1} rotationIntensity={0.5} floatIntensity={2}>
-              <ErrorBoundary name="Header_v1">
-                <Header_v1
-                  ref={cdTextRef}
-                  scale={10}
-                />
-              </ErrorBoundary>
-            </Float>
-          </Center>
-          <Physics>
-            <ErrorBoundary name="Rocks">
-              <Rocks
-                ref={rocksRef}
-                position={[0, 0, 0]}
 
-              />
-            </ErrorBoundary>
-          </Physics>
-          <ErrorBoundary name="Rotator">
-            <Rotator ref={rotatorRef} position={[0, -10, 0]} />
-          </ErrorBoundary>
-          {/* </Select> */}
 
-          {/* <Rotator ref={rotatorRef} position={[0, -10, 0]} /> */}
-
-          <PostProcessingEffects controls={postProcessingControls} />
-          {/* </Selection> */}
-          <AnimationManager
-            kreatonRef={kreatonRef}
-            earthRef={earthRef}
-            rotatorRef={rotatorRef}
-            clumpRef={rocksRef}
-            cdTextRef={cdTextRef}
-            scrollContainerRef={scrollContainerRef}
-          />
-        </Suspense>
-
-        {/* Postprocessing */}
-        {/* <EffectComposer disableNormalPass>
+            {/* Postprocessing */}
+            {/* <EffectComposer disableNormalPass>
           <Bloom luminanceThreshold={0} mipmapBlur luminanceSmoothing={0.0} intensity={5} />
           <DepthOfField target={[0, 0, 13]} focalLength={0.3} bokehScale={15} height={700} />
         </EffectComposer> */}
-      </Canvas>
-      {/* </Suspense> */}
+          </group>
+
+        </Canvas>
+      </Suspense>
     </>
   );
 }
