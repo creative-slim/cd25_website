@@ -76,6 +76,23 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
     const goodRocksRefs = useRef(Array.from({ length: NUM_ROCKS }, () => useRef()));
     const linesRef = useRef(Array.from({ length: NUM_ROCKS }, () => useRef()));
     const overallOpacity = useRef({ value: 0 }); // Start fully transparent
+
+    // Use refs instead of state for values that change every frame
+    const progressRef = useRef(Array(NUM_ROCKS).fill(0));
+    const isFallingRef = useRef(false);
+    const isReturningRef = useRef(false);
+
+    // Reuse THREE objects to prevent garbage collection
+    const targetOrbitPos = useRef(new THREE.Vector3());
+    const finalPosition = useRef(new THREE.Vector3());
+    const finalRotation = useRef(new THREE.Euler(0, 0, 0));
+    const basePos = useRef(new THREE.Vector3());
+    const shieldSurfacePoint = useRef(new THREE.Vector3());
+    const twitchOffset = useRef(new THREE.Vector3());
+    const up = useRef(new THREE.Vector3());
+    const tangent1 = useRef(new THREE.Vector3());
+    const tangent2 = useRef(new THREE.Vector3());
+
     const rockProperties = useRef(
         Array.from({ length: NUM_ROCKS }, (_, i) => {
             const phi = Math.acos(1 - 2 * (i + 0.5) / NUM_ROCKS);
@@ -174,7 +191,7 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
     });
 
     // Per-rock state
-    const [progress, setProgress] = useState(Array(NUM_ROCKS).fill(0)); // 0 = orbit, 1 = shield
+    const [progress, setProgress] = useState(Array(NUM_ROCKS).fill(0)); // Keep for UI updates only
     const [isFalling, setIsFalling] = useState(false);
     const [isReturning, setIsReturning] = useState(false);
     const startTime = useRef(0);
@@ -192,6 +209,8 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         setActive: (active) => {
             startTime.current = performance.now() / 1000;
             if (active) {
+                isFallingRef.current = true;
+                isReturningRef.current = false;
                 setIsFalling(true);
                 setIsReturning(false);
                 impactStates.current.forEach(s => s.captured = false);
@@ -202,6 +221,8 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                         impactStates.current[i].captured = true;
                     }
                 });
+                isFallingRef.current = false;
+                isReturningRef.current = true;
                 setIsFalling(false);
                 setIsReturning(true);
             }
@@ -242,19 +263,25 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
 
         let lightningDidJolt = false;
 
-        // Update progress
-        let newProgress = [...progress];
-        if (isFalling) {
+        // Update progress using refs instead of state
+        let newProgress = [...progressRef.current];
+        if (isFallingRef.current) {
             const t = Math.min((tNow - startTime.current) / FALL_TIME, 1);
             newProgress = newProgress.map(() => t * t * t);
-            if (t >= 1) setIsFalling(false);
-        } else if (isReturning) {
+            if (t >= 1) {
+                isFallingRef.current = false;
+                setIsFalling(false);
+            }
+        } else if (isReturningRef.current) {
             const t = Math.min((tNow - startTime.current) / RETURN_TIME, 1);
             const ease = 1 - Math.pow(1 - t, 3);
             newProgress = newProgress.map(() => 1 - ease);
-            if (t >= 1) setIsReturning(false);
+            if (t >= 1) {
+                isReturningRef.current = false;
+                setIsReturning(false);
+            }
         }
-        setProgress(newProgress);
+        progressRef.current = newProgress;
 
         for (let i = 0; i < NUM_ROCKS; i++) {
             const evilRock = rocksRefs.current[i].current;
@@ -279,7 +306,7 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
 
             // Lightning appears as random jolts, fades out in good mode
             lineMaterial.opacity = (1 - goodP) * 0.8 * currentOverallOpacity;
-            const canJolt = p < 1 && !isReturning && goodP < 0.5;
+            const canJolt = p < 1 && !isReturningRef.current && goodP < 0.5;
             const jolt = canJolt && Math.random() < JOLT_PROBABILITY;
             line.visible = jolt;
 
@@ -295,57 +322,55 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
 
             const orbitTheta = theta + currentSpeed * time;
 
-            const targetOrbitPos = new THREE.Vector3(
+            // Reuse THREE objects instead of creating new ones
+            targetOrbitPos.current.set(
                 orbitRadius * Math.sin(currentPhi) * Math.cos(orbitTheta),
                 orbitRadius * Math.cos(currentPhi),
                 orbitRadius * Math.sin(currentPhi) * Math.sin(orbitTheta)
             );
 
-            const finalPosition = new THREE.Vector3();
-            const finalRotation = new THREE.Euler(0, 0, 0);
-
-            if (isReturning) {
-                finalPosition.lerpVectors(impactStates.current[i].position, targetOrbitPos, 1 - p);
+            if (isReturningRef.current) {
+                finalPosition.current.lerpVectors(impactStates.current[i].position, targetOrbitPos.current, 1 - p);
             } else {
                 const currentRadius = orbitRadius + (shieldRadius - orbitRadius) * p;
-                const basePos = new THREE.Vector3(
+                basePos.current.set(
                     currentRadius * Math.sin(currentPhi) * Math.cos(orbitTheta),
                     currentRadius * Math.cos(currentPhi),
                     currentRadius * Math.sin(currentPhi) * Math.sin(orbitTheta)
                 );
-                finalPosition.copy(basePos);
+                finalPosition.current.copy(basePos.current);
 
                 if (line.visible) {
-                    let shieldSurfacePoint = basePos.clone().normalize().multiplyScalar(shieldRadius);
+                    shieldSurfacePoint.current.copy(basePos.current).normalize().multiplyScalar(shieldRadius);
                     // Add twitching to the lightning origin on the shield
-                    const twitchOffset = new THREE.Vector3(
+                    twitchOffset.current.set(
                         (Math.random() - 0.5) * SHIELD_TWITCH_AMOUNT,
                         (Math.random() - 0.5) * SHIELD_TWITCH_AMOUNT,
                         (Math.random() - 0.5) * SHIELD_TWITCH_AMOUNT
                     );
-                    shieldSurfacePoint.add(twitchOffset);
+                    shieldSurfacePoint.current.add(twitchOffset.current);
 
-                    const path = generateLightningPath(basePos, shieldSurfacePoint, LIGHTNING_SEGMENTS, LIGHTNING_CHAOS);
+                    const path = generateLightningPath(basePos.current, shieldSurfacePoint.current, LIGHTNING_SEGMENTS, LIGHTNING_CHAOS);
                     line.geometry.setFromPoints(path);
                 }
 
                 if (p >= 1) {
                     if (!impactStates.current[i].captured) {
-                        impactStates.current[i].position.copy(finalPosition);
+                        impactStates.current[i].position.copy(finalPosition.current);
                         impactStates.current[i].captured = true;
                     }
 
                     // Jerk logic, scaled by (1 - goodP)
                     const jerkAmount = 1 - goodP;
                     if (jerkAmount > 0.001) {
-                        const up = finalPosition.clone().normalize();
-                        let tangent1 = new THREE.Vector3(-up.z, 0, up.x).normalize();
-                        if (tangent1.length() < 0.1) tangent1 = new THREE.Vector3(0, 1, 0);
-                        const tangent2 = new THREE.Vector3().crossVectors(up, tangent1).normalize();
+                        up.current.copy(finalPosition.current).normalize();
+                        tangent1.current.set(-up.current.z, 0, up.current.x).normalize();
+                        if (tangent1.current.length() < 0.1) tangent1.current.set(0, 1, 0);
+                        tangent2.current.crossVectors(up.current, tangent1.current).normalize();
                         const j1 = (Math.sin(time * 7.3) + Math.random() * 0.5) * JERK_MAG * jerkAmount;
                         const j2 = (Math.cos(time * 5.1) + Math.random() * 0.5) * JERK_MAG * jerkAmount;
-                        finalPosition.add(tangent1.multiplyScalar(j1).add(tangent2.multiplyScalar(j2)));
-                        finalRotation.set(
+                        finalPosition.current.add(tangent1.current.multiplyScalar(j1).add(tangent2.current.multiplyScalar(j2)));
+                        finalRotation.current.set(
                             (Math.sin(time * 6.1) + Math.random() * 0.5) * JERK_ROT * jerkAmount,
                             (Math.cos(time * 8.2) + Math.random() * 0.5) * JERK_ROT * jerkAmount,
                             (Math.sin(time * 4.7) + Math.random() * 0.5) * JERK_ROT * jerkAmount
@@ -353,10 +378,10 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                     }
                 }
             }
-            evilRock.position.copy(finalPosition);
-            goodRock.position.copy(finalPosition);
-            evilRock.rotation.copy(finalRotation);
-            goodRock.rotation.copy(finalRotation);
+            evilRock.position.copy(finalPosition.current);
+            goodRock.position.copy(finalPosition.current);
+            evilRock.rotation.copy(finalRotation.current);
+            goodRock.rotation.copy(finalRotation.current);
         }
 
         if (lightningDidJolt && shieldRef.current && currentOverallOpacity > 0.5) {

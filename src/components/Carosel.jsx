@@ -234,6 +234,10 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   const dampingFactor = 0.92; // How quickly the velocity decays (0.9 = faster decay, 0.99 = slower decay)
   const minVelocity = 0.0001; // Threshold to stop the rotation completely
   const autoRotateSpeed = 0.0005; // Speed for default rotation
+  const cameraPosition = useRef(new THREE.Vector3());
+  const cameraDirection = useRef(new THREE.Vector3(0, 0, -1));
+  const cardPosition = useRef(new THREE.Vector3());
+  const toCameraVector = useRef(new THREE.Vector3());
 
   // Function to calculate which card the camera is looking at
   const determineVisibleCard = useCallback(() => {
@@ -253,12 +257,8 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
     if (cards.length === 0) return null;
 
-    // Camera position and direction
-    const cameraPosition = new THREE.Vector3();
-    camera.getWorldPosition(cameraPosition);
-    const cameraDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(
-      camera.quaternion
-    );
+    camera.getWorldPosition(cameraPosition.current);
+    cameraDirection.current.set(0, 0, -1).applyQuaternion(camera.quaternion);
 
     // Raycasting approach - find which card is most directly in the camera's line of sight
     let closestCard = null;
@@ -267,20 +267,16 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
     cards.forEach((card) => {
       // Get card position in world space
-      const cardPosition = new THREE.Vector3();
-      card.getWorldPosition(cardPosition);
+      card.getWorldPosition(cardPosition.current);
 
       // Direction from camera to card
-      const toCameraVector = new THREE.Vector3().subVectors(
-        cardPosition,
-        cameraPosition
-      );
-      const distance = toCameraVector.length();
-      toCameraVector.normalize();
+      toCameraVector.current.subVectors(cardPosition.current, cameraPosition.current);
+      const distance = toCameraVector.current.length();
+      toCameraVector.current.normalize();
 
       // Calculate angle between camera direction and direction to card
       // Smaller angle means the card is more directly in front of the camera
-      const angle = cameraDirection.angleTo(toCameraVector);
+      const angle = cameraDirection.current.angleTo(toCameraVector.current);
 
       // Prioritize cards with smaller angles (more directly in view)
       // If angles are similar (within 0.1 radians), prefer the closer card

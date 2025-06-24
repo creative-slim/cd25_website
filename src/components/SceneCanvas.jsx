@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { Environment, Center, Float } from "@react-three/drei";
+import { Environment, Center, Float, useDetectGPU, AdaptiveEvents } from "@react-three/drei";
 import { Suspense, lazy, useMemo } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
@@ -178,7 +178,13 @@ function PostProcessingControls() {
 }
 
 // Separate component for post-processing effects
-function PostProcessingEffects({ controls }) {
+function PostProcessingEffects({ controls, GPUTier }) {
+  // Disable post-processing for low-end GPUs or mobile devices
+  if (GPUTier.tier === 0 || GPUTier.isMobile) {
+    console.log("Post-processing disabled due to low GPU tier or mobile device");
+    return null;
+  }
+
   return (
     <EffectComposer autoClear={false}>
       {controls.bloomEnabled && (
@@ -221,6 +227,8 @@ function PostProcessingEffects({ controls }) {
 }
 
 export function SceneCanvas({ scrollContainerRef }) {
+  const GPUTier = useDetectGPU();
+  console.log("GPU Tier: ", GPUTier);
   const kreatonRef = useRef();
   const earthRef = useRef();
   const rotatorRef = useRef();
@@ -280,6 +288,8 @@ export function SceneCanvas({ scrollContainerRef }) {
             position: [0, 0.5, 4],
           }}
         >
+          <AdaptiveEvents />
+
           <Suspense name="AnimatedStars" fallback={null}>
             <AnimatedStars {...starsProps} />
           </Suspense>
@@ -325,7 +335,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             </ErrorBoundary>
           </Suspense>
           <Suspense name="PostProcessingEffects" fallback={null}>
-            <PostProcessingEffects controls={postProcessingControls} />
+            <PostProcessingEffects controls={postProcessingControls} GPUTier={GPUTier} />
           </Suspense>
           <Suspense name="AnimationManager" fallback={null}>
             <AnimationManager
