@@ -294,7 +294,14 @@ export function SceneCanvas({ scrollContainerRef }) {
             <AnimatedStars {...starsProps} />
           </Suspense>
           <Suspense name="Environment" fallback={null}>
-            <Environment files={memoizedModelUrl} />
+            {/* <Environment files={memoizedModelUrl} /> */}
+            <Environment
+              files="/sci-fi-nebula-space-planet_2K.exr"
+              backgroundRotation={[0, Math.PI / 2, 0]}
+              background={true}
+              backgroundIntensity={1}
+              environmentIntensity={0}
+            />
           </Suspense>
           <Suspense name="Earth2" fallback={null}>
             <ErrorBoundary name="Earth2">
@@ -307,7 +314,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             </ErrorBoundary>
           </Suspense>
           <Suspense name="Header_v1" fallback={null}>
-            <Center position={[0, 2, 0]}>
+            <Center position={[-1, 2.2, 0]}>
               <Float speed={1} rotationIntensity={0.5} floatIntensity={2}>
                 <ErrorBoundary name="Header_v1">
                   <Header_v1
