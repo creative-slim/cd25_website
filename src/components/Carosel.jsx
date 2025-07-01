@@ -29,81 +29,27 @@ const radius = 4;
 // Debug flag
 const DEBUG_LOGS = process.env.NODE_ENV === 'development';
 
-// API Configuration
-const API_CONFIG = {
-  baseUrl: "https://webhook.creative-directors.com/webhook",
-  endpoint: "7bd04d17-2d35-49e1-a2aa-10b5c8ee3429",
-  maxRetries: 3,
-  retryDelay: 1000, // 1 second
-};
-
-// Custom hook for fetching carousel data
-const useCarouselData = () => {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchImageData = useCallback(async (webhookUrl, retryCount = 0) => {
-    try {
-      const response = await fetch(webhookUrl);
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch image data: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      if (DEBUG_LOGS) console.error("Error fetching image data:", error);
-
-      // Implement retry logic
-      if (retryCount < API_CONFIG.maxRetries) {
-        if (DEBUG_LOGS) console.log(`Retrying fetch (${retryCount + 1}/${API_CONFIG.maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, API_CONFIG.retryDelay));
-        return fetchImageData(webhookUrl, retryCount + 1);
-      }
-
-      throw error; // Propagate error after all retries
+// Utility to extract carousel data from DOM
+const extractCarouselDataFromDOM = () => {
+  const wrappers = Array.from(document.querySelectorAll('div[data-three="thumbnail"].project-links-item'));
+  const data = wrappers.slice(0, NUM_CARDS_TO_DISPLAY).map((wrapper, idx) => {
+    // Find the first <img> inside
+    const img = wrapper.querySelector('img');
+    let imageUrl = img ? img.getAttribute('src') : null;
+    if (!imageUrl && img && img.getAttribute('srcset')) {
+      // Try to find 720w in srcset
+      const srcset = img.getAttribute('srcset');
+      const match = srcset.match(/([^\s]+)\s+720w/);
+      if (match) imageUrl = match[1];
+      else imageUrl = srcset.split(',')[0].split(' ')[0]; // fallback to first
     }
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        const webhookUrl = `${API_CONFIG.baseUrl}/${API_CONFIG.endpoint}`;
-        const endpointResponse = await fetchImageData(webhookUrl);
-
-        if (isMounted) {
-          setData(endpointResponse.slice(0, NUM_CARDS_TO_DISPLAY));
-        }
-      } catch (error) {
-        if (DEBUG_LOGS) console.error("Error fetching carousel data:", error);
-        if (isMounted) {
-          setError(error.message);
-          setData([]);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [fetchImageData]);
-
-  return { data, isLoading, error };
+    // Assign data-carousel-index for easier matching
+    wrapper.setAttribute('data-carousel-index', idx);
+    if (img) img.setAttribute('data-carousel-index', idx);
+    return { imgEl: img, wrapperEl: wrapper, imageUrl, index: idx };
+  });
+  console.log('[CAROUSEL] Extracted carousel data:', data);
+  return data;
 };
 
 // Wrap the Carousel component with React.memo to optimize rendering
@@ -111,21 +57,20 @@ function Carousel({
   data = [],
   onHoverStart,
   onHoverEnd,
-  onViewChange,
   ...props
 }) {
   const count = data.length; // Use data length for count
   if (count === 0) return null; // Don't render if no data
 
   return data.map((item, i) => {
-    // Use the first image from the item's images array, or a fallback
-    const imageUrl = item.images?.[0] || "https://picsum.photos/600"; // Fallback if no images
+    // Use the imageUrl from the DOM extraction
+    const imageUrl = item.imageUrl; // No fallback, trust DOM extraction
 
     return (
       <Card
-        key={item.slug || i} // Use slug as key if available
+        key={item.index}
         index={i}
-        data={item} // Pass the full item data to the card
+        data={item}
         url={imageUrl}
         position={[
           Math.sin((i / count) * Math.PI * 2) * radius,
@@ -133,9 +78,8 @@ function Carousel({
           Math.cos((i / count) * Math.PI * 2) * radius,
         ]}
         rotation={[0, Math.PI + (i / count) * Math.PI * 2, 0]}
-        onHoverStart={onHoverStart} // Pass down
-        onHoverEnd={onHoverEnd} // Pass down
-        onViewChange={onViewChange} // Pass down view change handler
+        onHoverStart={onHoverStart}
+        onHoverEnd={onHoverEnd}
       />
     );
   });
@@ -148,7 +92,6 @@ const Card = memo(({
   data,
   onHoverStart,
   onHoverEnd,
-  onViewChange,
   ...props
 }) => {
   const ref = useRef();
@@ -215,7 +158,8 @@ const Card = memo(({
 });
 
 export const Rotator = forwardRef(({ ...props }, ref) => {
-  const { data: carouselData, isLoading, error } = useCarouselData();
+  const [carouselData, setCarouselData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
   const [isObserverActive, setIsObserverActive] = useState(false); // New state for observer control
   const carouselRef = useRef();
@@ -307,56 +251,42 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
   // Function to update DOM elements based on the current card
   const updateActiveElements = useCallback(
     (cardData) => {
-      if (!cardData?.slug || !isObserverActive) { // Check if observer is active
+      if (cardData?.index === undefined || !isObserverActive) {
         if (DEBUG_LOGS) console.log("[CAROUSEL] updateActiveElements: No cardData or observer inactive, clearing active classes.");
         clearActiveProjectClasses();
         return;
       }
-
-      const targetSelector = `[data-projects="${cardData.slug}"]`;
-      const targetElement = document.querySelector(targetSelector);
-
-      if (targetElement) {
-        // Remove 'active' class from all elements with data-projects attribute
-        const allProjectElements = document.querySelectorAll("[data-projects]");
-        allProjectElements.forEach((el) => {
-          if (el.classList.contains("active")) {
-            if (DEBUG_LOGS) console.log("[CAROUSEL] Removing 'active' class from:", el);
-          }
-          el.classList.remove("active");
-        });
-
-        // Add 'active' class to the element matching the current card
-        targetElement.classList.add("active");
-        if (DEBUG_LOGS) console.log("[CAROUSEL] Adding 'active' class to:", targetElement);
+      // Use data-carousel-index to match
+      const allWrappers = document.querySelectorAll('.project-links-item');
+      allWrappers.forEach((el) => el.classList.remove('active'));
+      const target = document.querySelector(`.project-links-item[data-carousel-index="${cardData.index}"]`);
+      if (target) {
+        target.classList.add('active');
+        if (DEBUG_LOGS) console.log(`[CAROUSEL] Set active: index=${cardData.index}, classList=`, target.classList.value, target);
       } else {
-        if (DEBUG_LOGS) console.log("[CAROUSEL] updateActiveElements: Target element not found, clearing active classes.");
-        clearActiveProjectClasses();
+        if (DEBUG_LOGS) console.log(`[CAROUSEL] No target found for index=${cardData.index}`);
       }
     },
-    [clearActiveProjectClasses, isObserverActive] // Add isObserverActive to dependencies
+    [clearActiveProjectClasses, isObserverActive]
   );
 
   // Handler for card view changes with improved logging
   const handleCardViewChange = useCallback(
     (cardData) => {
-      if (!cardData || !isObserverActive) { // Check if observer is active
+      if (cardData?.index === undefined || !isObserverActive) { // Check if observer is active
         clearActiveProjectClasses();
         return;
       }
-
       // Check if card data has actually changed before updating
-      if (!currentCardData || currentCardData.slug !== cardData.slug) {
+      if (!currentCardData || currentCardData.index !== cardData.index) {
         setCurrentCardData(cardData);
-
         // Update DOM elements with active class
         updateActiveElements(cardData);
-
         // Provide an option for parent components to subscribe to this event
         props.onCardViewChange?.(cardData);
       }
     },
-    [props, currentCardData, updateActiveElements, clearActiveProjectClasses, isObserverActive] // Add isObserverActive to dependencies
+    [props, currentCardData, updateActiveElements, clearActiveProjectClasses, isObserverActive]
   );
 
   // Add this useEffect to log current card data whenever it changes
@@ -493,7 +423,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
           // Update the last visible card reference
           lastVisibleCardRef.current = visibleCardData;
           // Trigger the view change handler
-          handleCardViewChange(visibleCardData.data);
+          handleCardViewChange(visibleCardData);
         }
       } else {
         // No card is in view, clear the active classes
@@ -599,12 +529,12 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
   // Add an initial update when component mounts to set the first active element
   useEffect(() => {
-    // This will run once after the component has mounted and cards are loaded
-    const initialCard = determineVisibleCard();
-    if (initialCard?.data) {
-      updateActiveElements(initialCard.data);
-    }
-  }, [determineVisibleCard, updateActiveElements]);
+    // Extract carousel data from DOM on mount
+    setIsLoading(true);
+    const data = extractCarouselDataFromDOM();
+    setCarouselData(data);
+    setIsLoading(false);
+  }, []);
 
   return (
     <group
