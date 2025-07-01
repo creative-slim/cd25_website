@@ -31,8 +31,12 @@ const localWaterTextureUrl = "/ocean_diffuse.jpg";
 // const localWaterTextureUrl = "/texture_stylized_water.png";
 
 
+// const remoteWaterTextureUrl =
+//   "http://files.creative-directors.com/creative-website/creative25/textures/water-texture_Small.jpeg";
+
 const remoteWaterTextureUrl =
-  "http://files.creative-directors.com/creative-website/creative25/textures/water-texture_Small.jpeg";
+  "https://files.creative-directors.com/creative-website/creative25/textures/ocean_diffuse.jpg";
+
 const waterTextureUrl = isDevelopment
   ? localWaterTextureUrl
   : remoteWaterTextureUrl;

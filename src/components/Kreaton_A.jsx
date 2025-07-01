@@ -36,9 +36,7 @@ const Kreaton = forwardRef((props, ref) => {
   const { nodes, materials } = useGraph(clone);
 
   // Load the texture
-  // const skinTexture = useLoader(TextureLoader, "https://files.creative-directors.com/creative-website/creative25/textures/seamless_skin_Small.jpeg");
-  // const skinTexture = useLoader(TextureLoader, "/seamless_skin_HC9.png");
-  const skinTexture = useLoader(TextureLoader, "/seamless_skin_HC13.png");
+  const skinTexture = useLoader(TextureLoader, "https://files.creative-directors.com/creative-website/creative25/textures/seamless_skin_HC13.jpeg");
 
   // Memoize the skin material to prevent it from being re-created on every render.
   const skinMaterial = useMemo(() => {

@@ -41,9 +41,9 @@ import AnimatedStars from "./AnimatedStars";
 // import { PhysicsDemo } from "./unused/PhysicsDemo";
 
 const isDevelopment = import.meta.env.DEV;
-const localModelUrl = "/artist_workshop_100.hdr";
+const localModelUrl = "/sci-fi-nebula-space-planet_2K.exr";
 const remoteModelUrl =
-  "https://files.creative-directors.com/creative-website/creative25/hdr/artist_workshop_100.hdr";
+  "https://files.creative-directors.com/creative-website/creative25/hdr/sci-fi-nebula-space-planet_2K.exr";
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
 // Separate component for Leva controls to prevent re-renders
@@ -417,7 +417,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             {/* <Environment files={memoizedModelUrl} backgroundRotation={[0, Math.PI / 2, 0]}
               background={false} backgroundIntensity={0} environmentIntensity={1} /> */}
             <Environment
-              files="/sci-fi-nebula-space-planet_2K.exr"
+              files={memoizedModelUrl}
               backgroundRotation={[0, Math.PI / 2, 0]}
               background={true}
               backgroundIntensity={1}
