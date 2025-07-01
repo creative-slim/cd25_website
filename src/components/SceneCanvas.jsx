@@ -6,6 +6,7 @@ import { useRef } from "react";
 import { Perf } from "r3f-perf";
 import { useControls, Leva } from "leva";
 import ErrorBoundary from "./ErrorBoundary";
+import { OrbitControls } from "@react-three/drei";
 
 import {
   Bloom,
@@ -177,6 +178,122 @@ function PostProcessingControls() {
   return controls;
 }
 
+// Separate component for lighting controls
+function LightingControls() {
+  const controls = useControls({
+    "Lighting": {
+      collapsed: true,
+    },
+    // Ambient Light Controls
+    ambientLightEnabled: {
+      value: true,
+      label: "Ambient Light Enabled",
+    },
+    ambientLightIntensity: {
+      value: 1,
+      min: 0,
+      max: 5,
+      step: 0.1,
+      label: "Ambient Light Intensity",
+    },
+    ambientLightColor: {
+      value: "#ffffff",
+      label: "Ambient Light Color",
+    },
+    // Spot Light Controls
+    spotLightEnabled: {
+      value: true,
+      label: "Spot Light Enabled",
+    },
+    spotLightIntensity: {
+      value: 500,
+      min: 0,
+      max: 1000,
+      step: 10,
+      label: "Spot Light Intensity",
+    },
+    spotLightColor: {
+      value: "#ffffff",
+      label: "Spot Light Color",
+    },
+    spotLightPosition: {
+      value: { x: 10, y: 10, z: 5 },
+      label: "Spot Light Position",
+    },
+    spotLightScale: {
+      value: 1,
+      min: 0.1,
+      max: 5,
+      step: 0.1,
+      label: "Spot Light Scale",
+    },
+    spotLightAngle: {
+      value: 0.3,
+      min: 0,
+      max: Math.PI / 2,
+      step: 0.01,
+      label: "Spot Light Angle",
+    },
+    spotLightPenumbra: {
+      value: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "Spot Light Penumbra",
+    },
+    spotLightDistance: {
+      value: 0,
+      min: 0,
+      max: 100,
+      step: 1,
+      label: "Spot Light Distance",
+    },
+    spotLightDecay: {
+      value: 2,
+      min: 0,
+      max: 5,
+      step: 0.1,
+      label: "Spot Light Decay",
+    },
+    // Point Light Controls
+    pointLightEnabled: {
+      value: true,
+      label: "Point Light Enabled",
+    },
+    pointLightIntensity: {
+      value: 5,
+      min: 0,
+      max: 100,
+      step: 0.5,
+      label: "Point Light Intensity",
+    },
+    pointLightColor: {
+      value: "#ffffff",
+      label: "Point Light Color",
+    },
+    pointLightPosition: {
+      value: { x: -10, y: -10, z: -10 },
+      label: "Point Light Position",
+    },
+    pointLightDistance: {
+      value: 0,
+      min: 0,
+      max: 100,
+      step: 1,
+      label: "Point Light Distance",
+    },
+    pointLightDecay: {
+      value: 2,
+      min: 0,
+      max: 5,
+      step: 0.1,
+      label: "Point Light Decay",
+    },
+  });
+
+  return controls;
+}
+
 // Separate component for post-processing effects
 function PostProcessingEffects({ controls, GPUTier }) {
   // Disable post-processing for low-end GPUs or mobile devices
@@ -239,6 +356,9 @@ export function SceneCanvas({ scrollContainerRef }) {
   // Get post-processing controls from separate component
   const postProcessingControls = PostProcessingControls();
 
+  // Get lighting controls from separate component
+  const lightingControls = LightingControls();
+
   // Memoize the model URL to prevent unnecessary recalculations
   const memoizedModelUrl = useMemo(() => {
     console.log(`Loading model from: ${modelUrl}`);
@@ -294,7 +414,8 @@ export function SceneCanvas({ scrollContainerRef }) {
             <AnimatedStars {...starsProps} />
           </Suspense>
           <Suspense name="Environment" fallback={null}>
-            {/* <Environment files={memoizedModelUrl} /> */}
+            {/* <Environment files={memoizedModelUrl} backgroundRotation={[0, Math.PI / 2, 0]}
+              background={false} backgroundIntensity={0} environmentIntensity={1} /> */}
             <Environment
               files="/sci-fi-nebula-space-planet_2K.exr"
               backgroundRotation={[0, Math.PI / 2, 0]}
@@ -379,6 +500,47 @@ export function SceneCanvas({ scrollContainerRef }) {
           <DepthOfField target={[0, 0, 13]} focalLength={0.3} bokehScale={15} height={700} />
         </EffectComposer> */}
           </group>
+
+          {lightingControls.ambientLightEnabled && (
+            <ambientLight
+              name="ambientLight"
+              intensity={lightingControls.ambientLightIntensity}
+              color={lightingControls.ambientLightColor}
+            />
+          )}
+
+          {lightingControls.spotLightEnabled && (
+            <spotLight
+              name="spotLight"
+              position={[
+                lightingControls.spotLightPosition.x,
+                lightingControls.spotLightPosition.y,
+                lightingControls.spotLightPosition.z
+              ]}
+              scale={lightingControls.spotLightScale}
+              intensity={lightingControls.spotLightIntensity}
+              color={lightingControls.spotLightColor}
+              angle={lightingControls.spotLightAngle}
+              penumbra={lightingControls.spotLightPenumbra}
+              distance={lightingControls.spotLightDistance}
+              decay={lightingControls.spotLightDecay}
+            />
+          )}
+
+          {lightingControls.pointLightEnabled && (
+            <pointLight
+              name="pointLight"
+              position={[
+                lightingControls.pointLightPosition.x,
+                lightingControls.pointLightPosition.y,
+                lightingControls.pointLightPosition.z
+              ]}
+              intensity={lightingControls.pointLightIntensity}
+              color={lightingControls.pointLightColor}
+              distance={lightingControls.pointLightDistance}
+              decay={lightingControls.pointLightDecay}
+            />
+          )}
 
         </Canvas>
       </Suspense>

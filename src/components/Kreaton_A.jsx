@@ -18,9 +18,10 @@ import { forwardRef } from "react";
 import { useImperativeHandle, useRef, useMemo, useEffect } from "react";
 import { kreatonGoldMaterial } from "../materials/kreatonGoldMaterial";
 import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
-import { TextureLoader, MeshStandardMaterial, RepeatWrapping } from "three";
+import { TextureLoader, MeshStandardMaterial, RepeatWrapping, Color } from "three";
 import { useLoader } from "@react-three/fiber";
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
+
 
 // Define model URLs
 const localModelUrl = "src/models/Kreaton_final-transformed.glb";
@@ -35,7 +36,9 @@ const Kreaton = forwardRef((props, ref) => {
   const { nodes, materials } = useGraph(clone);
 
   // Load the texture
-  const skinTexture = useLoader(TextureLoader, "https://files.creative-directors.com/creative-website/creative25/textures/seamless_skin_Small.jpeg");
+  // const skinTexture = useLoader(TextureLoader, "https://files.creative-directors.com/creative-website/creative25/textures/seamless_skin_Small.jpeg");
+  // const skinTexture = useLoader(TextureLoader, "/seamless_skin_HC9.png");
+  const skinTexture = useLoader(TextureLoader, "/seamless_skin_HC13.png");
 
   // Memoize the skin material to prevent it from being re-created on every render.
   const skinMaterial = useMemo(() => {
@@ -47,8 +50,11 @@ const Kreaton = forwardRef((props, ref) => {
 
     return new MeshStandardMaterial({
       map: skinTexture,
-      roughness: 0.7,
-      metalness: 0.1,
+      roughness: 0.4,
+      metalness: 0.5,
+      emissiveMap: skinTexture,
+      emissive: new Color("#ffffff"), // warm skin tone for emission
+      emissiveIntensity: 8, //+5 on power up
     });
   }, [skinTexture]);
 

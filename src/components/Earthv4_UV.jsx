@@ -26,7 +26,11 @@ const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb";
 const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
-const localWaterTextureUrl = "/water-texture_Small.jpeg";
+// const localWaterTextureUrl = "/water-texture_Small.jpeg";
+const localWaterTextureUrl = "/ocean_diffuse.jpg";
+// const localWaterTextureUrl = "/texture_stylized_water.png";
+
+
 const remoteWaterTextureUrl =
   "http://files.creative-directors.com/creative-website/creative25/textures/water-texture_Small.jpeg";
 const waterTextureUrl = isDevelopment
@@ -38,6 +42,9 @@ if (isDevelopment) {
   console.log(`Loading water texture from: ${waterTextureUrl}`);
   console.log(`Loading model from: ${modelUrl}`);
 }
+
+// Water texture repeat multiplier constant
+const WATER_TEXTURE_REPEAT_MULTIPLIER = 2.0;
 
 // Extract shaders to constants for better readability and to avoid re-creation
 const WATER_VERTEX_SHADER = `
@@ -122,6 +129,7 @@ const WATER_FRAGMENT_SHADER = `
   uniform bool uUseTexture; // To control texture usage
   uniform vec3 uColor;
   uniform float uOpacity;
+  uniform float uTextureRepeat;
 
   uniform float uRoughness;
   uniform float uMetalness;
@@ -229,7 +237,8 @@ const WATER_FRAGMENT_SHADER = `
   void main() {
     vec3 albedo = uColor;
     if (uUseTexture) {
-        vec4 texSample = texture2D(uTexture, vUv);
+        vec2 repeatedUv = fract(vUv * uTextureRepeat);
+        vec4 texSample = texture2D(uTexture, repeatedUv);
         albedo = mix(uColor, texSample.rgb, texSample.a * 0.6 + 0.4); 
     }
 
@@ -274,7 +283,8 @@ const WaterMaterial = shaderMaterial(
   {
     // Uniforms
     uTime: 0,
-    uColor: new Color(0x1e90ff), // Default water color
+    // uColor: new Color(0x1e90ff), // Default water color
+    uColor: new Color("#ffffff"), // Default water color
     uTexture: null,
     uUseTexture: true,
     uOpacity: 0.84,
@@ -283,6 +293,7 @@ const WaterMaterial = shaderMaterial(
     uNoiseSpeed: 0.5,
     uRoughness: 0.57,
     uMetalness: 0.2,
+    uTextureRepeat: WATER_TEXTURE_REPEAT_MULTIPLIER,
     // Caustics uniforms
     uCausticsFrequency: 14.3,
     uCausticsSpeed: 0.16,
@@ -309,14 +320,15 @@ extend({ WaterMaterial });
 // from re-rendering every time a control is changed.
 function WaterShaderControls() {
   const controls = useControls("Water Shader", {
-    noiseFrequency: { value: 3.0, min: 0.1, max: 20, step: 0.1 },
-    noiseAmplitude: { value: 0.02, min: 0.001, max: 0.1, step: 0.001 },
-    noiseSpeed: { value: 0.3, min: 0.0, max: 2, step: 0.01 },
-    waterColor: "#00b2ff",
-    waterOpacity: { value: 0.88, min: 0, max: 1, step: 0.01 },
+    noiseFrequency: { value: 4.5, min: 0.1, max: 20, step: 0.1 },
+    noiseAmplitude: { value: 0.012, min: 0.001, max: 0.100, step: 0.001 },
+    noiseSpeed: { value: 0.30, min: 0.0, max: 2, step: 0.01 },
+    waterColor: { value: "#1e90ff", label: "Water Color" }, // Color picker
+    waterOpacity: { value: 1, min: 0, max: 1, step: 0.01 },
     roughness: { value: 0.34, min: 0, max: 1, step: 0.01 },
     metalness: { value: 0.2, min: 0, max: 1, step: 0.01 },
     useTextureFlag: { value: true, label: "Use Water Texture" },
+    textureRepeat: { value: WATER_TEXTURE_REPEAT_MULTIPLIER, min: 0.1, max: 20, step: 0.1, label: "Texture Repeat" },
     causticsFrequency: {
       value: 10.0,
       min: 1,
@@ -346,21 +358,21 @@ function WaterShaderControls() {
       folder: "Caustics",
     },
     causticsEdgeThickness: {
-      value: 0.01,
+      value: 0.00,
       min: 0.001,
       max: 0.5,
       step: 0.001,
       folder: "Caustics",
     },
     causticsDistortionFrequency: {
-      value: 25.0,
+      value: 18.5,
       min: 0.1,
       max: 50,
       step: 0.1,
       folder: "Caustics",
     },
     causticsDistortionAmplitude: {
-      value: 0.04,
+      value: 0.17,
       min: 0.0,
       max: 0.5,
       step: 0.001,
@@ -371,6 +383,35 @@ function WaterShaderControls() {
   return controls;
 }
 
+// Earth model controls
+function EarthModelControls() {
+  const controls = useControls("Earth Model", {
+    // Ocean mesh controls
+    oceanRotationX: { value: -0.8, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
+    oceanRotationY: { value: 0.5, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
+    oceanRotationZ: { value: -0.5, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
+    oceanScale: { value: 1.82, min: 0.1, max: 5, step: 0.01, folder: "Ocean" },
+
+    // Inner sphere controls
+    innerSphereScale: { value: 1.7, min: 0.1, max: 5, step: 0.01, folder: "Inner Sphere" },
+
+    // Continent mesh controls
+    continentPositionX: { value: 0.01, min: -2, max: 2, step: 0.001, folder: "Continent" },
+    continentPositionY: { value: 0.00, min: -2, max: 2, step: 0.001, folder: "Continent" },
+    continentPositionZ: { value: 0, min: -2, max: 2, step: 0.001, folder: "Continent" },
+    continentRotationX: { value: -Math.PI / 2, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Continent" },
+    continentRotationY: { value: 0, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Continent" },
+    continentRotationZ: { value: -0.1, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Continent" },
+    continentScaleX: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
+    continentScaleY: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
+    continentScaleZ: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
+
+    // Geometry quality controls
+    sphereSegments: { value: 128 * 4, min: 32, max: 512, step: 32, folder: "Geometry Quality" },
+  }, { collapsed: true });
+
+  return controls;
+}
 
 const Earth2 = forwardRef((props, ref) => {
   const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
@@ -378,8 +419,9 @@ const Earth2 = forwardRef((props, ref) => {
   const materialRef = useRef();
   const waterTexture = useTexture(waterTextureUrl);
 
-  // Get controls from the separate, memoized component
+  // Get controls from the separate, memoized components
   const shaderControls = WaterShaderControls();
+  const modelControls = EarthModelControls();
 
   // Memoize the texture setup to prevent it from running on every render
   const setupTexture = useCallback(() => {
@@ -404,15 +446,15 @@ const Earth2 = forwardRef((props, ref) => {
   });
 
   // Memoize geometry arguments to prevent re-creation on each render
-  const sphereGeometryArgs = useMemo(() => [1.023, 128 * 4, 128 * 4], []);
-  const innerSphereArgs = useMemo(() => [1.023, 128 * 4, 128 * 4], []);
+  const sphereGeometryArgs = useMemo(() => [1.023, modelControls.sphereSegments, modelControls.sphereSegments], [modelControls.sphereSegments]);
+  const innerSphereArgs = useMemo(() => [1.023, modelControls.sphereSegments, modelControls.sphereSegments], [modelControls.sphereSegments]);
 
   return (
     <group ref={ref} {...props} dispose={null}>
       <mesh
         name="ocean"
-        rotation={[-0.8, 0.5, -0.55]}
-        scale={1.82}
+        rotation={[modelControls.oceanRotationX, modelControls.oceanRotationY, modelControls.oceanRotationZ]}
+        scale={modelControls.oceanScale}
       >
         <sphereGeometry args={sphereGeometryArgs} />
         <waterMaterial
@@ -422,6 +464,7 @@ const Earth2 = forwardRef((props, ref) => {
           uUseTexture={shaderControls.useTextureFlag && !!waterTexture}
           uColor={new Color(shaderControls.waterColor)}
           uOpacity={shaderControls.waterOpacity}
+          uTextureRepeat={shaderControls.textureRepeat}
           uNoiseFrequency={shaderControls.noiseFrequency}
           uNoiseAmplitude={shaderControls.noiseAmplitude}
           uNoiseSpeed={shaderControls.noiseSpeed}
@@ -439,15 +482,15 @@ const Earth2 = forwardRef((props, ref) => {
       <Sphere
         args={innerSphereArgs}
         position={[0, 0, 0]}
-        scale={1.7}
+        scale={modelControls.innerSphereScale}
       />
       <mesh
         name="continent"
         geometry={nodes["optimized-verts"].geometry}
         material={materials["Material.001"]}
-        position={[0.047, 0.021, 0]}
-        rotation={[-Math.PI / 2, 0, -0.1]}
-        scale={[1.221, 1.213, 1.214]}
+        position={[modelControls.continentPositionX, modelControls.continentPositionY, modelControls.continentPositionZ]}
+        rotation={[modelControls.continentRotationX, modelControls.continentRotationY, modelControls.continentRotationZ]}
+        scale={[modelControls.continentScaleX, modelControls.continentScaleY, modelControls.continentScaleZ]}
       />
     </group>
   );
