@@ -21,7 +21,7 @@ const ORBIT_RADIUS = 5.0;            // Distance of rocks from center (increase 
 const ORBIT_SPEED = 0.5;             // Radians/sec (speed of orbit)
 const SHIELD_RADIUS = 3.5;           // Radius of the shield (increase for bigger shield)
 const SHIELD_COLOR = "blue";         // Shield color
-const SHIELD_OPACITY = 0.3;          // Shield opacity
+const SHIELD_OPACITY = 1;          // Shield opacity
 const TRANSITION_DURATION = 1.0;     // Seconds for orbit-to-fall transition
 const LOG_POS_INTERVAL = 1.0;        // Seconds between position logs
 // ===========================
