@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, RefObject, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useThree } from "@react-three/fiber";
@@ -17,6 +17,13 @@ const DEBUG_LOGS = process.env.NODE_ENV === 'development';
 const DEFAULT_FOV = 55;
 const WIDE_FOV = 70;
 const ZOOM_FOV = 40;
+
+// --- Energy Particles Fade Timing ---
+const ENERGY_FADE_OUT_BEFORE_EXPLOSION = 0.5; // seconds before explosion to fade out energy
+const ENERGY_FADE_OUT_DURATION = 0.3; // seconds for EnergyParticles fade-out (should match in EnergyParticles)
+
+// At the top, add:
+const KREATON_DEFAULT_EMISSIVE_INTENSITY = 8; // Should match Kreaton_A.jsx
 
 // Enhanced logging with color coding
 const logStyles = {
@@ -69,12 +76,13 @@ const createLogger = (mainTimeline) => {
 
 // Types for model refs (replace 'any' with more specific types if available)
 interface AnimationManagerProps {
-  kreatonRef: RefObject<any>;
-  earthRef: RefObject<any>;
-  rotatorRef: RefObject<any>;
-  clumpRef: RefObject<any>;
-  pointingFingerRef?: RefObject<any>;
-  cdTextRef?: RefObject<any>;
+  kreatonRef: any;
+  earthRef: any;
+  rotatorRef: any;
+  clumpRef: any;
+  pointingFingerRef?: any;
+  cdTextRef?: any;
+  setEnergyParticlesActive?: (active: boolean) => void;
 }
 
 // Animation options type for camera and FOV transitions
@@ -107,22 +115,23 @@ export function AnimationManager({
   clumpRef,
   pointingFingerRef,
   cdTextRef,
+  setEnergyParticlesActive,
 }: AnimationManagerProps) {
   const { camera } = useThree(); // camera is always PerspectiveCamera in this app
-  const mainTimelineRef = useRef<gsap.core.Timeline | null>(null);
-  const [modelReady, setModelReady] = useState<boolean>(false);
-  const earthRotationRef = useRef<(() => void) | null>(null);
-  const [isEarthRotating, setIsEarthRotating] = useState<boolean>(false);
-  const logRef = useRef<(type: string, msg: string, ...args: any[]) => void>((type, msg, ...args) => {
+  const mainTimelineRef = useRef(null);
+  const [modelReady, setModelReady] = useState(false);
+  const earthRotationRef = useRef(null);
+  const [isEarthRotating, setIsEarthRotating] = useState(false);
+  const logRef = useRef((type: string, msg: string, ...args: any[]) => {
     if (type === "error") console.error(msg, ...args);
     else if (DEBUG_LOGS) console.log(msg, ...args);
   });
-  const cameraTargetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 1, 0));
-  const hasPushedRef = useRef<boolean>(false);
-  const explosionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pointCycleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const initializedRef = useRef<boolean>(false);
-  const initialAnimationPlayedRef = useRef<boolean>(false);
+  const cameraTargetRef = useRef(new THREE.Vector3(0, 1, 0));
+  const hasPushedRef = useRef(false);
+  const explosionTimeoutRef = useRef(null);
+  const pointCycleTimeoutRef = useRef(null);
+  const initializedRef = useRef(false);
+  const initialAnimationPlayedRef = useRef(false);
 
   // Memoize refs to prevent unnecessary re-renders
   const memoizedRefs = useMemo(() => ({
@@ -842,6 +851,13 @@ export function AnimationManager({
         onEnter: () => {
           console.log(" --------section 4 onEnter");
 
+          // Turn on energy particles immediately
+          if (setEnergyParticlesActive) setEnergyParticlesActive(true);
+          // Bump Kreaton skin emissive intensity for channeling
+          if (kreatonRef.current && kreatonRef.current.setSkinEmissiveIntensity) {
+            kreatonRef.current.setSkinEmissiveIntensity(KREATON_DEFAULT_EMISSIVE_INTENSITY + 20);
+          }
+
           if (clumpRef.current) {
             logRef.current("animation", "Calming the storm in Section 4");
             clumpRef.current.calmTheStorm();
@@ -881,6 +897,17 @@ export function AnimationManager({
               const pushAction = kreatonRef.current.actions["PUSH"];
               const animationDuration = pushAction ? pushAction.getClip().duration : 1.5;
 
+              // Turn off energy particles before explosion
+              if (setEnergyParticlesActive) {
+                setTimeout(() => {
+                  setEnergyParticlesActive(false);
+                  // Reset Kreaton skin emissive intensity on explosion
+                  if (kreatonRef.current && kreatonRef.current.setSkinEmissiveIntensity) {
+                    kreatonRef.current.setSkinEmissiveIntensity(KREATON_DEFAULT_EMISSIVE_INTENSITY);
+                  }
+                }, (animationDuration * 1000 * 0.7) - (ENERGY_FADE_OUT_BEFORE_EXPLOSION * 1000));
+              }
+
               // Trigger explosion near the end of the push animation
               explosionTimeoutRef.current = setTimeout(() => {
                 if (clumpRef.current) {
@@ -897,7 +924,7 @@ export function AnimationManager({
                   logRef.current("model", "Transitioning to IDLE animation");
                   kreatonTransitionFromCurrentToAnimation("IDLE");
                 }
-              }, animationDuration * 1000 * 0.7); // Trigger at 60% of push animation
+              }, animationDuration * 1000 * 0.7); // Trigger at 70% of push animation
             } else {
               logRef.current("error", "PUSH animation not found! Using fallback.");
               explosionTimeoutRef.current = setTimeout(() => {
@@ -918,6 +945,15 @@ export function AnimationManager({
         onEnterBack: () => {
           console.log(" --------section 4 onEnterBack");
           logRef.current("scrollTrigger", "Re-entering Section 4 from below");
+          // Turn on energy particles when re-entering
+          // not on enter back
+          // if (setEnergyParticlesActive) setEnergyParticlesActive(true);
+
+
+          // not on enter back
+          // if (kreatonRef.current && kreatonRef.current.setSkinEmissiveIntensity) {
+          //   kreatonRef.current.setSkinEmissiveIntensity(KREATON_DEFAULT_EMISSIVE_INTENSITY + 10);
+          // }
           if (clumpRef.current) {
             logRef.current("animation", "Re-entering Section 4, calming storm");
             clumpRef.current.calmTheStorm();
@@ -935,6 +971,12 @@ export function AnimationManager({
         },
         onLeave: () => {
           console.log(" --------section 4 onLeave");
+          // Turn off energy particles when leaving
+          if (setEnergyParticlesActive) setEnergyParticlesActive(false);
+          // Reset Kreaton skin emissive intensity
+          if (kreatonRef.current && kreatonRef.current.setSkinEmissiveIntensity) {
+            kreatonRef.current.setSkinEmissiveIntensity(KREATON_DEFAULT_EMISSIVE_INTENSITY);
+          }
           if (clumpRef.current) {
             logRef.current("animation", "Fading out rocks (leaving Section 4)");
             // clumpRef.current.fadeOut(1);
@@ -943,6 +985,12 @@ export function AnimationManager({
         onLeaveBack: () => {
           // This is handled by onEnterBack of section 3
           console.log(" --------section 4 onLeaveBack");
+          // Turn off energy particles when leaving backwards
+          if (setEnergyParticlesActive) setEnergyParticlesActive(false);
+          // Reset Kreaton skin emissive intensity
+          if (kreatonRef.current && kreatonRef.current.setSkinEmissiveIntensity) {
+            kreatonRef.current.setSkinEmissiveIntensity(KREATON_DEFAULT_EMISSIVE_INTENSITY);
+          }
         },
       });
 

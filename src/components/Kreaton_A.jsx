@@ -21,13 +21,15 @@ import { kreatonArmorMaterial } from "../materials/kreatonWhiteArmorMaterial";
 import { TextureLoader, MeshStandardMaterial, RepeatWrapping, Color } from "three";
 import { useLoader } from "@react-three/fiber";
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
+import gsap from "gsap";
 
 
 // Define model URLs
 const localModelUrl = "src/models/Kreaton_final-transformed.glb";
 const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/Kreaton_final-transformed.glb";
 const DEBUG_LOGS = process.env.NODE_ENV === 'development';
-
+const DEFAULT_EMISSIVE_INTENSITY = 8;
+let skinMaterialRef = null;
 const Kreaton = forwardRef((props, ref) => {
   const internalRef = useRef();
   // Use the ModelLoader utility
@@ -46,14 +48,16 @@ const Kreaton = forwardRef((props, ref) => {
     skinTexture.wrapT = RepeatWrapping;
     skinTexture.needsUpdate = true;
 
-    return new MeshStandardMaterial({
+    const mat = new MeshStandardMaterial({
       map: skinTexture,
       roughness: 0.4,
       metalness: 0.5,
       emissiveMap: skinTexture,
       emissive: new Color("#ffffff"), // warm skin tone for emission
-      emissiveIntensity: 8, //+5 on power up
+      emissiveIntensity: DEFAULT_EMISSIVE_INTENSITY,
     });
+    skinMaterialRef = mat;
+    return mat;
   }, [skinTexture]);
 
   // Assign our custom and memoized materials to the graph.
@@ -219,6 +223,16 @@ const Kreaton = forwardRef((props, ref) => {
       },
       getAnimationNames: () => Object.keys(actions),
       getObject: () => internalRef.current,
+      /**
+       * Animate the emissive intensity of the skin material.
+       * @param {number} intensity - Target value
+       * @param {number} duration - Animation duration in seconds (default 0.5)
+       */
+      setSkinEmissiveIntensity: (intensity, duration = 0.5) => {
+        if (skinMaterialRef) {
+          gsap.to(skinMaterialRef, { emissiveIntensity: intensity, duration, ease: "power2.in" });
+        }
+      },
     };
 
     return instance;

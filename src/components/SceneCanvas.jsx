@@ -1,8 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import { Center, Float, useDetectGPU, AdaptiveEvents } from "@react-three/drei";
-import { Suspense, lazy, useMemo } from "react";
+import { Suspense, lazy, useMemo, useRef, useState, useCallback } from "react";
 import { AnimationManager } from "./AnimationManager";
-import { useRef } from "react";
 import { Perf } from "r3f-perf";
 import { useControls, Leva, folder } from "leva";
 import ErrorBoundary from "./ErrorBoundary";
@@ -27,9 +26,10 @@ import {
 } from "@react-three/postprocessing";
 
 import { Physics } from "@react-three/rapier";
-// import * as THREE from "three";
+import * as THREE from "three";
 import { Rotator } from "./Carosel";
 import Env from "./Env";
+import EnergyParticles from "./EnergyParticles";
 const Header_v1 = lazy(() => import("./CD_header_v1_untransformed"));
 const Kreaton = lazy(() => import("./Kreaton_A"));
 const Earth2 = lazy(() => import("./Earthv4_UV"));
@@ -355,14 +355,34 @@ export function SceneCanvas({ scrollContainerRef }) {
   const rocksRef = useRef();
   // const pointingFingerRef = useRef();
   const cdTextRef = useRef();
+  const energyParticlesRef = useRef();
+
+  // Energy particles state - starts hidden by default
+  const [energyParticlesActive, setEnergyParticlesActive] = useState(false);
+
+  // Helper to get Kreaton's position (center)
+  const getKreatonCenter = useCallback(() => {
+    if (kreatonRef.current && kreatonRef.current.getObject) {
+      const obj = kreatonRef.current.getObject();
+      if (obj) {
+        // World position
+        const pos = new THREE.Vector3();
+        obj.getWorldPosition(pos);
+        pos.y += 1; // Move up to chest
+        return pos;
+      }
+    }
+    // Default fallback
+    const fallback = new THREE.Vector3(0, 0.02, 0.5);
+    fallback.y += 1;
+    return fallback;
+  }, []);
 
   // Get post-processing controls from separate component
   const postProcessingControls = PostProcessingControls();
 
   // Get lighting controls from separate component
   const lightingControls = LightingControls();
-
-
 
   // Leva control for rocks active state
   useControls({
@@ -376,8 +396,6 @@ export function SceneCanvas({ scrollContainerRef }) {
       label: "Rocks: Fall to Shield",
     },
   });
-
-
 
   return (
     <>
@@ -433,7 +451,6 @@ export function SceneCanvas({ scrollContainerRef }) {
                 <Rocks
                   ref={rocksRef}
                   position={[0, 0, 0]}
-
                 />
               </ErrorBoundary>
             </Physics>
@@ -446,6 +463,13 @@ export function SceneCanvas({ scrollContainerRef }) {
           <Suspense name="PostProcessingEffects" fallback={null}>
             <PostProcessingEffects controls={postProcessingControls} GPUTier={GPUTier} />
           </Suspense>
+          <Suspense name="EnergyParticles" fallback={null}>
+            <EnergyParticles
+              ref={energyParticlesRef}
+              active={energyParticlesActive}
+              center={getKreatonCenter()}
+            />
+          </Suspense>
           <Suspense name="AnimationManager" fallback={null}>
             <AnimationManager
               kreatonRef={kreatonRef}
@@ -454,6 +478,7 @@ export function SceneCanvas({ scrollContainerRef }) {
               clumpRef={rocksRef}
               cdTextRef={cdTextRef}
               scrollContainerRef={scrollContainerRef}
+              setEnergyParticlesActive={setEnergyParticlesActive}
             />
           </Suspense>
 

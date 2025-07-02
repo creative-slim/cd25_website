@@ -10,15 +10,15 @@ const MAX_ORBIT_RADIUS = 7.5;
 const MIN_ORBIT_SPEED = -1;
 const MAX_ORBIT_SPEED = 1;
 const ROCK_SIZE = 0.2;
-const SHIELD_RADIUS = 4;
-const SHIELD_COLOR = "gold";
-const SHIELD_OPACITY = 0.2;
-const SHIELD_ROUGHNESS = 0.4;
-const SHIELD_METALNESS = 1.0;
+const SHIELD_RADIUS = 3.6;
+const SHIELD_COLOR = "black";
+const SHIELD_OPACITY = 0.4;
+const SHIELD_ROUGHNESS = 0.6;
+const SHIELD_METALNESS = 1;
 const FALL_TIME = 1.2; // seconds to fall
 const RETURN_TIME = 1.2; // seconds to return
 const LIGHTNING_SEGMENTS = 8;
-const LIGHTNING_CHAOS = 0.1;
+const LIGHTNING_CHAOS = 0.2;
 const SHIELD_TWITCH_AMOUNT = 0.2; // How much the lightning origin moves on the shield
 const JOLT_PROBABILITY = 0.001; // Chance of a lightning jolt per frame
 const GOOD_MODE_TRANSITION_TIME = 2.0; // seconds
@@ -34,15 +34,24 @@ const evilRockMaterial = new THREE.MeshStandardMaterial({ color: "darkGray", rou
 const lineMaterial = new THREE.LineBasicMaterial({
     color: "white",
     transparent: true,
-    opacity: 0.8,
+    opacity: 1,
     blending: THREE.AdditiveBlending,
     linewidth: 100,
+
 });
 
 const Shield = forwardRef(({ radius = SHIELD_RADIUS, color = SHIELD_COLOR, roughness = SHIELD_ROUGHNESS, metalness = SHIELD_METALNESS }, ref) => (
     <mesh ref={ref} visible={false}>
         <sphereGeometry args={[radius, 32, 32]} />
-        <meshStandardMaterial color={color} transparent opacity={0} roughness={roughness} metalness={metalness} />
+        <meshStandardMaterial
+            color={color}
+            transparent
+            opacity={0.1}
+            roughness={roughness}
+            metalness={metalness}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+        />
     </mesh>
 ));
 
