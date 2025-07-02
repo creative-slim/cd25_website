@@ -11,9 +11,9 @@ const GoldColor = new Color("#fad078");
 export const GoldMaterial = new MeshPhysicalMaterial({
     name: "GoldMaterial",
     color: GoldColor,
-    roughness: 0.5,
+    roughness: 0.3,
     metalness: 0.5,
-    reflectivity: 0.2,
+    reflectivity: 0.5,
     // iridescence: 0.5,
     // emissive: kreatonGoldColor,
     // emissiveIntensity: 0.2,

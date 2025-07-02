@@ -4,7 +4,7 @@ import { useRef, useCallback, useMemo, Suspense } from "react";
 import { useFrame } from "@react-three/fiber";
 
 const isDevelopment = import.meta.env.DEV;
-const backgroundTextureLocalUrl = "/sci-fi-nebula-space-planet_4K.webp";
+const backgroundTextureLocalUrl = "/sci-fi-nebula-space-planet_4K.jpg";
 const lightingTextureLocalUrl = "/artist_workshop_100.hdr";
 const lightingTextureRemoteUrl = "https://files.creative-directors.com/creative-website/creative25/hdr/artist_workshop_100.hdr";
 const backgroundTextureRemoteUrl =

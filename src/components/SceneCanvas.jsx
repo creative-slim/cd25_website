@@ -46,249 +46,255 @@ const isDevelopment = import.meta.env.DEV;
 // Separate component for Leva controls to prevent re-renders
 function PostProcessingControls() {
   const controls = useControls({
-    "Post Processing": folder({
-      bloomEnabled: {
-        value: true,
-        label: "Bloom Enabled",
+    "Post Processing": folder(
+      {
+        bloomEnabled: {
+          value: true,
+          label: "Bloom Enabled",
+        },
+        bloomIntensity: {
+          value: 0.4,
+          min: 0,
+          max: 10,
+          step: 0.1,
+          label: "Bloom Intensity",
+        },
+        bloomLuminanceThreshold: {
+          value: 1,
+          min: 0,
+          max: 2,
+          step: 0.1,
+          label: "Bloom Threshold",
+        },
+        bloomLuminanceSmoothing: {
+          value: 0.04,
+          min: 0,
+          max: 1,
+          step: 0.001,
+          label: "Bloom Smoothing",
+        },
+        dofEnabled: {
+          value: false,
+          label: "Depth of Field Enabled",
+        },
+        mipmapBlur: {
+          value: true,
+          label: "Bloom Mipmap Blur",
+        },
+        dofFocusDistance: {
+          value: 0,
+          min: 0,
+          max: 1,
+          step: 0.01,
+          label: "DOF Focus Distance",
+        },
+        dofFocalLength: {
+          value: 0.024,
+          min: 0,
+          max: 1,
+          step: 0.001,
+          label: "DOF Focal Length",
+        },
+        dofBokehScale: {
+          value: 2,
+          min: 0,
+          max: 10,
+          step: 0.1,
+          label: "DOF Bokeh Scale",
+        },
+        noiseEnabled: {
+          value: false,
+          label: "Noise Enabled",
+        },
+        noiseOpacity: {
+          value: 0.02,
+          min: 0,
+          max: 1,
+          step: 0.01,
+          label: "Noise Opacity",
+        },
+        vignetteEnabled: {
+          value: false,
+          label: "Vignette Enabled",
+        },
+        vignetteEskil: {
+          value: false,
+          label: "Vignette Eskil",
+        },
+        vignetteOffset: {
+          value: 0.5,
+          min: 0,
+          max: 1,
+          step: 0.01,
+          label: "Vignette Offset",
+        },
+        vignetteDarkness: {
+          value: 0.5,
+          min: 0,
+          max: 1,
+          step: 0.01,
+          label: "Vignette Darkness",
+        },
+        chromaticEnabled: {
+          value: false,
+          label: "Chromatic Aberration Enabled",
+        },
+        chromaticOffset: {
+          value: 0.003,
+          min: 0,
+          max: 0.01,
+          step: 0.001,
+          label: "Chromatic Offset",
+        },
+        glitchEnabled: {
+          value: false,
+          label: "Glitch Enabled",
+        },
+        glitchMode: {
+          options: ["constant", "wild"],
+          value: "constant",
+          label: "Glitch Mode",
+        },
+        glitchStrength: {
+          value: 0.3,
+          min: 0,
+          max: 1,
+          step: 0.01,
+          label: "Glitch Strength",
+        },
+        pixelationEnabled: {
+          value: false,
+          label: "Pixelation Enabled",
+        },
+        pixelationGranularity: {
+          value: 1,
+          min: 1,
+          max: 10,
+          step: 1,
+          label: "Pixelation Granularity",
+        },
       },
-      bloomIntensity: {
-        value: 1,
-        min: 0,
-        max: 10,
-        step: 0.1,
-        label: "Bloom Intensity",
-      },
-      bloomLuminanceThreshold: {
-        value: 0.9,
-        min: 0,
-        max: 2,
-        step: 0.1,
-        label: "Bloom Threshold",
-      },
-      bloomLuminanceSmoothing: {
-        value: 0.025,
-        min: 0,
-        max: 1,
-        step: 0.001,
-        label: "Bloom Smoothing",
-      },
-      dofEnabled: {
-        value: false,
-        label: "Depth of Field Enabled",
-      },
-      dofFocusDistance: {
-        value: 0,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "DOF Focus Distance",
-      },
-      dofFocalLength: {
-        value: 0.024,
-        min: 0,
-        max: 1,
-        step: 0.001,
-        label: "DOF Focal Length",
-      },
-      dofBokehScale: {
-        value: 2,
-        min: 0,
-        max: 10,
-        step: 0.1,
-        label: "DOF Bokeh Scale",
-      },
-      noiseEnabled: {
-        value: false,
-        label: "Noise Enabled",
-      },
-      noiseOpacity: {
-        value: 0.02,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Noise Opacity",
-      },
-      vignetteEnabled: {
-        value: false,
-        label: "Vignette Enabled",
-      },
-      vignetteEskil: {
-        value: false,
-        label: "Vignette Eskil",
-      },
-      vignetteOffset: {
-        value: 0.5,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Vignette Offset",
-      },
-      vignetteDarkness: {
-        value: 0.5,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Vignette Darkness",
-      },
-      chromaticEnabled: {
-        value: false,
-        label: "Chromatic Aberration Enabled",
-      },
-      chromaticOffset: {
-        value: 0.003,
-        min: 0,
-        max: 0.01,
-        step: 0.001,
-        label: "Chromatic Offset",
-      },
-      glitchEnabled: {
-        value: false,
-        label: "Glitch Enabled",
-      },
-      glitchMode: {
-        options: ["constant", "wild"],
-        value: "constant",
-        label: "Glitch Mode",
-      },
-      glitchStrength: {
-        value: 0.3,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Glitch Strength",
-      },
-      pixelationEnabled: {
-        value: false,
-        label: "Pixelation Enabled",
-      },
-      pixelationGranularity: {
-        value: 1,
-        min: 1,
-        max: 10,
-        step: 1,
-        label: "Pixelation Granularity",
-      },
-    }, { collapsed: true }),
+      { collapsed: true }
+    ),
   });
 
-  // Return the controls object for use in the effects
-  return controls["Post Processing"] || {};
+  return controls;
 }
 
 // Separate component for lighting controls
 function LightingControls() {
   const controls = useControls({
-    "Lighting": folder({
-      // Ambient Light Controls
-      ambientLightEnabled: {
-        value: true,
-        label: "Ambient Light Enabled",
-      },
-      ambientLightIntensity: {
-        value: 1,
-        min: 0,
-        max: 5,
-        step: 0.1,
-        label: "Ambient Light Intensity",
-      },
-      ambientLightColor: {
-        value: "#ffffff",
-        label: "Ambient Light Color",
-      },
-      // Spot Light Controls
-      spotLightEnabled: {
-        value: true,
-        label: "Spot Light Enabled",
-      },
-      spotLightIntensity: {
-        value: 500,
-        min: 0,
-        max: 1000,
-        step: 10,
-        label: "Spot Light Intensity",
-      },
-      spotLightColor: {
-        value: "#ffffff",
-        label: "Spot Light Color",
-      },
-      spotLightPosition: {
-        value: { x: 10, y: 10, z: 5 },
-        label: "Spot Light Position",
-      },
-      spotLightScale: {
-        value: 1,
-        min: 0.1,
-        max: 5,
-        step: 0.1,
-        label: "Spot Light Scale",
-      },
-      spotLightAngle: {
-        value: 0.3,
-        min: 0,
-        max: Math.PI / 2,
-        step: 0.01,
-        label: "Spot Light Angle",
-      },
-      spotLightPenumbra: {
-        value: 0,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Spot Light Penumbra",
-      },
-      spotLightDistance: {
-        value: 0,
-        min: 0,
-        max: 100,
-        step: 1,
-        label: "Spot Light Distance",
-      },
-      spotLightDecay: {
-        value: 2,
-        min: 0,
-        max: 5,
-        step: 0.1,
-        label: "Spot Light Decay",
-      },
-      // Point Light Controls
-      pointLightEnabled: {
-        value: true,
-        label: "Point Light Enabled",
-      },
-      pointLightIntensity: {
-        value: 5,
-        min: 0,
-        max: 100,
-        step: 0.5,
-        label: "Point Light Intensity",
-      },
-      pointLightColor: {
-        value: "#ffffff",
-        label: "Point Light Color",
-      },
-      pointLightPosition: {
-        value: { x: -10, y: -10, z: -10 },
-        label: "Point Light Position",
-      },
-      pointLightDistance: {
-        value: 0,
-        min: 0,
-        max: 100,
-        step: 1,
-        label: "Point Light Distance",
-      },
-      pointLightDecay: {
-        value: 2,
-        min: 0,
-        max: 5,
-        step: 0.1,
-        label: "Point Light Decay",
-      },
-    }, { collapsed: true }),
+    "Lighting": {
+      collapsed: true,
+    },
+    // Ambient Light Controls
+    ambientLightEnabled: {
+      value: true,
+      label: "Ambient Light Enabled",
+    },
+    ambientLightIntensity: {
+      value: 1,
+      min: 0,
+      max: 5,
+      step: 0.1,
+      label: "Ambient Light Intensity",
+    },
+    ambientLightColor: {
+      value: "#ffffff",
+      label: "Ambient Light Color",
+    },
+    // Spot Light Controls
+    spotLightEnabled: {
+      value: true,
+      label: "Spot Light Enabled",
+    },
+    spotLightIntensity: {
+      value: 500,
+      min: 0,
+      max: 1000,
+      step: 10,
+      label: "Spot Light Intensity",
+    },
+    spotLightColor: {
+      value: "#ffffff",
+      label: "Spot Light Color",
+    },
+    spotLightPosition: {
+      value: { x: 10, y: 10, z: 5 },
+      label: "Spot Light Position",
+    },
+    spotLightScale: {
+      value: 1,
+      min: 0.1,
+      max: 5,
+      step: 0.1,
+      label: "Spot Light Scale",
+    },
+    spotLightAngle: {
+      value: 0.3,
+      min: 0,
+      max: Math.PI / 2,
+      step: 0.01,
+      label: "Spot Light Angle",
+    },
+    spotLightPenumbra: {
+      value: 0,
+      min: 0,
+      max: 1,
+      step: 0.01,
+      label: "Spot Light Penumbra",
+    },
+    spotLightDistance: {
+      value: 0,
+      min: 0,
+      max: 100,
+      step: 1,
+      label: "Spot Light Distance",
+    },
+    spotLightDecay: {
+      value: 2,
+      min: 0,
+      max: 5,
+      step: 0.1,
+      label: "Spot Light Decay",
+    },
+    // Point Light Controls
+    pointLightEnabled: {
+      value: true,
+      label: "Point Light Enabled",
+    },
+    pointLightIntensity: {
+      value: 5,
+      min: 0,
+      max: 100,
+      step: 0.5,
+      label: "Point Light Intensity",
+    },
+    pointLightColor: {
+      value: "#ffffff",
+      label: "Point Light Color",
+    },
+    pointLightPosition: {
+      value: { x: -10, y: -10, z: -10 },
+      label: "Point Light Position",
+    },
+    pointLightDistance: {
+      value: 0,
+      min: 0,
+      max: 100,
+      step: 1,
+      label: "Point Light Distance",
+    },
+    pointLightDecay: {
+      value: 2,
+      min: 0,
+      max: 5,
+      step: 0.1,
+      label: "Point Light Decay",
+    },
   });
 
-  // Return the controls object for use in the lights
-  return controls["Lighting"] || {};
+  return controls;
 }
 
 // Separate component for post-processing effects
@@ -385,10 +391,8 @@ export function SceneCanvas({ scrollContainerRef }) {
             stencil: false, // Disable stencil buffer if not needed
             depth: true,
           }}
-
-          // dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
-          // frameloop="demand" // Only render when needed
-          performance={{ min: 0.5 }} // Allow frame drops for better performance
+          performance={{ min: 0.5, max: 60 }} // Cap at 60 FPS
+          dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
           camera={{
             fov: 55,
             near: 0.1,

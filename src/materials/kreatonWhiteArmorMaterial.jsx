@@ -11,8 +11,8 @@ const kreatonArmorColor = new Color("#FFF4E5");
 export const kreatonArmorMaterial = new MeshPhysicalMaterial({
   color: kreatonArmorColor,
   roughness: 0.65,
-  metalness: 0.4,
-  reflectivity: 0.5,
+  metalness: 0,
+  reflectivity: 0.8,
   iridescence: 0.5,
   //   emissive: kreatonArmorColor,
   emissiveIntensity: 1,

@@ -135,6 +135,7 @@ const WATER_FRAGMENT_SHADER = `
   uniform vec3 uColor;
   uniform float uOpacity;
   uniform float uTextureRepeat;
+  uniform float uTextureBrightness; // New: control texture brightness
 
   uniform float uRoughness;
   uniform float uMetalness;
@@ -244,7 +245,9 @@ const WATER_FRAGMENT_SHADER = `
     if (uUseTexture) {
         vec2 repeatedUv = fract(vUv * uTextureRepeat);
         vec4 texSample = texture2D(uTexture, repeatedUv);
-        albedo = mix(uColor, texSample.rgb, texSample.a * 0.6 + 0.4); 
+        // Apply brightness control to texture
+        vec3 adjustedTexture = texSample.rgb * uTextureBrightness;
+        albedo = mix(uColor, adjustedTexture, texSample.a * 0.6 + 0.4); 
     }
 
     vec3 N = normalize(vWorldNormal);
@@ -289,10 +292,11 @@ const WaterMaterial = shaderMaterial(
     // Uniforms
     uTime: 0,
     // uColor: new Color(0x1e90ff), // Default water color
-    uColor: new Color("#ffffff"), // Default water color
+    uColor: new Color("#000000"), // Default water color
     uTexture: null,
     uUseTexture: true,
     uOpacity: 0.84,
+    uTextureBrightness: 0.8, // New: default texture brightness
     uNoiseFrequency: 6.4,
     uNoiseAmplitude: 0.02,
     uNoiseSpeed: 0.5,
@@ -333,6 +337,7 @@ function WaterShaderControls() {
     roughness: { value: 0.34, min: 0, max: 1, step: 0.01 },
     metalness: { value: 0.2, min: 0, max: 1, step: 0.01 },
     useTextureFlag: { value: true, label: "Use Water Texture" },
+    textureBrightness: { value: 0.8, min: 0, max: 1, step: 0.01, label: "Brightness" },
     textureRepeat: { value: WATER_TEXTURE_REPEAT_MULTIPLIER, min: 0.1, max: 20, step: 0.1, label: "Texture Repeat" },
     causticsFrequency: {
       value: 10.0,
@@ -396,10 +401,8 @@ function EarthModelControls() {
     oceanRotationY: { value: 0.5, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
     oceanRotationZ: { value: -0.5, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
     oceanScale: { value: 1.82, min: 0.1, max: 5, step: 0.01, folder: "Ocean" },
-
     // Inner sphere controls
     innerSphereScale: { value: 1.7, min: 0.1, max: 5, step: 0.01, folder: "Inner Sphere" },
-
     // Continent mesh controls
     continentPositionX: { value: 0.01, min: -2, max: 2, step: 0.001, folder: "Continent" },
     continentPositionY: { value: 0.00, min: -2, max: 2, step: 0.001, folder: "Continent" },
@@ -469,6 +472,7 @@ const Earth2 = forwardRef((props, ref) => {
           uUseTexture={shaderControls.useTextureFlag && !!waterTexture}
           uColor={new Color(shaderControls.waterColor)}
           uOpacity={shaderControls.waterOpacity}
+          uTextureBrightness={shaderControls.textureBrightness}
           uTextureRepeat={shaderControls.textureRepeat}
           uNoiseFrequency={shaderControls.noiseFrequency}
           uNoiseAmplitude={shaderControls.noiseAmplitude}
@@ -487,6 +491,7 @@ const Earth2 = forwardRef((props, ref) => {
       <Sphere
         args={innerSphereArgs}
         position={[0, 0, 0]}
+        material={ContinentMaterial}
         scale={modelControls.innerSphereScale}
       />
       <mesh

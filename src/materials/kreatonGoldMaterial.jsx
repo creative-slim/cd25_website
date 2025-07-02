@@ -4,18 +4,21 @@ import { extend } from "@react-three/fiber";
 // Register the material for JSX usage
 extend({ MeshPhysicalMaterial });
 
+//#e5cc88
+//#e5c486
 // Create the gold color (RGB: 238, 208, 145)
-const kreatonGoldColor = new Color("#fad078");
+// const kreatonGoldColor = new Color("#fad078");
+const kreatonGoldColor = new Color("#e5c486");
 
 // Material instance for direct usage
 export const kreatonGoldMaterial = new MeshPhysicalMaterial({
   color: kreatonGoldColor,
-  roughness: 0.6,
+  roughness: 0.2,
   metalness: 1,
-  reflectivity: 0.5,
+  // reflectivity: 0,
   // iridescence: 0.5,
   // emissive: kreatonGoldColor,
-  // emissiveIntensity: 0.2,
+  // emissiveIntensity: 0.5,
   // ior: 1.5,
   // sheenRoughness: 1,
 });
