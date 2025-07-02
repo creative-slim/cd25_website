@@ -340,7 +340,11 @@ function PostProcessingEffects({ controls, GPUTier }) {
   );
 }
 
-export function SceneCanvas({ scrollContainerRef }) {
+export function SceneCanvas({
+  scrollContainerRef,
+  currentSection,
+  onSectionChange
+}) {
   const GPUTier = useDetectGPU();
   console.log("GPU Tier: ", GPUTier);
   const kreatonRef = useRef();
@@ -450,6 +454,8 @@ export function SceneCanvas({ scrollContainerRef }) {
               clumpRef={rocksRef}
               cdTextRef={cdTextRef}
               scrollContainerRef={scrollContainerRef}
+              currentSection={currentSection}
+              onSectionChange={onSectionChange}
             />
           </Suspense>
 

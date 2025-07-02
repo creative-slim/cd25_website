@@ -10,6 +10,7 @@
   <style>
     body {
       margin: 0;
+      overflow: hidden;
     }
 
     * {
@@ -17,8 +18,10 @@
     }
 
     .sections {
-      height: 150vh;
+      height: 100vh;
       background-color: black;
+      position: relative;
+      overflow: hidden;
     }
 
     .project-container {
@@ -42,12 +45,18 @@
       background: rgba(255, 255, 255, 0.2);
       transform: scale(1.05);
     }
+
+    [data-scroll-container] {
+      height: 100vh;
+      overflow: hidden;
+    }
   </style>
 </head>
 
 <body style="margin: 0; background: #f4e6d7">
   <div style="position: relative">
-    <div id="index-root-threed" style="height: 100vh; position: fixed; width: 100vw; left: 0; top: 0"></div>
+    <div id="index-root-threed" style="height: 100vh; position: fixed; width: 100vw; left: 0; top: 0; z-index: 6;">
+    </div>
 
     <!-- Project elements container -->
     <div class="project-container">
