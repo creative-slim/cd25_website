@@ -10,16 +10,25 @@ import React, {
   useMemo,
   useEffect,
 } from "react";
-import { useGLTF } from "@react-three/drei";
+import { useGLTF, useHelper } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import * as THREE from "three";
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
+import { GoldMaterial } from "../materials/globalGoldMaterial";
+import { WhiteMaterial } from "../materials/globalWhiteMaterial";
 
 // Define model URLs
 const localModelUrl = "src/models/CD_header_v1-transformed.glb";
 const remoteModelUrl = "https://files.creative-directors.com/creative-website/creative25/glbs/CD_header_v1-transformed.glb";
 const DEBUG_LOGS = process.env.NODE_ENV === 'development';
+
+
+
+// Individual material constants for easy tweaking
+const headerGoldMaterial = GoldMaterial;
+const headerWhiteMaterial = WhiteMaterial;
 
 const Header_v1 = forwardRef((props, ref) => {
   const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
@@ -29,6 +38,22 @@ const Header_v1 = forwardRef((props, ref) => {
   const goldOriginalRotations = useRef([]);
   const whiteOriginalRotations = useRef([]);
   const pointLightRef = useRef();
+  const timeRef = useRef(0);
+
+  // Add point light helper
+  // useHelper(pointLightRef, THREE.PointLightHelper, 0.5, "#ffffff");
+
+  // Animate point light to orbit around origin using useFrame
+  useFrame((state, delta) => {
+    if (pointLightRef.current) {
+      timeRef.current += delta;
+      const radius = 0.1;
+      const speed = 0.8;
+      pointLightRef.current.position.x = Math.cos(timeRef.current * speed) * radius * 3;
+      pointLightRef.current.position.y = 0.05 + Math.sin(timeRef.current * speed) * radius * 0.5;
+      pointLightRef.current.position.z = 0; // Keep y constant
+    }
+  });
 
   // Memoize keys to prevent re-filtering on every render
   const goldKeys = useMemo(
@@ -179,13 +204,14 @@ const Header_v1 = forwardRef((props, ref) => {
   // Render all meshes and collect refs
   return (
     <group {...props} dispose={null} ref={groupRef}>
+      <pointLight ref={pointLightRef} intensity={5} color={"#ffffff"} />
 
       {goldKeys.map((key, i) => (
         <mesh
           key={key}
           ref={(el) => (goldMeshRefs.current[i] = el)}
           geometry={nodes[key].geometry}
-          material={materials.gold}
+          material={headerGoldMaterial}
           position={nodes[key].position}
           rotation={nodes[key].rotation}
         />
@@ -196,7 +222,7 @@ const Header_v1 = forwardRef((props, ref) => {
           key={key}
           ref={(el) => (whiteMeshRefs.current[i] = el)}
           geometry={nodes[key].geometry}
-          material={materials.white}
+          material={headerWhiteMaterial}
           rotation={nodes[key].rotation}
           position={nodes[key].position}
         />

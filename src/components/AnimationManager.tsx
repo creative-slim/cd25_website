@@ -536,10 +536,7 @@ export function AnimationManager({
           { duration: 1, ease: "power2.inOut" }
         );
         if (bottomUp) {
-          // setCameraPosition(
-          //   { x: 0, y: 1, z: 2 },
-          //   { duration: 1, ease: "power3.inOut" }
-          // );
+
           const cameraSequence = gsap.timeline(); // This timeline will be cleaned up by useGSAP
           cameraSequence
             .to(camera.position, {
@@ -560,6 +557,7 @@ export function AnimationManager({
           cameraSequence.play();
 
         } else {
+
           const cameraSequence = gsap.timeline(); // This timeline will be cleaned up by useGSAP
           cameraSequence
             .to(camera.position, {
@@ -796,6 +794,7 @@ export function AnimationManager({
             clumpRef.current.fadeIn(1.5);
             clumpRef.current.unleashTheStorm();
           }
+
         },
         onEnterBack: () => {
           console.log(" --------section 3 onEnterBack");

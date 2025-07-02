@@ -18,6 +18,7 @@ import {
   LinearMipmapLinearFilter,
 } from "three";
 import { useModelLoader, preloadModel } from "../utils/ModelLoader";
+import { ContinentMaterial } from "../materials/continentMaterial";
 
 // Determine the model URL based on the environment
 const isDevelopment = process.env.NODE_ENV === 'development';
@@ -491,7 +492,7 @@ const Earth2 = forwardRef((props, ref) => {
       <mesh
         name="continent"
         geometry={nodes["optimized-verts"].geometry}
-        material={materials["Material.001"]}
+        material={ContinentMaterial}
         position={[modelControls.continentPositionX, modelControls.continentPositionY, modelControls.continentPositionZ]}
         rotation={[modelControls.continentRotationX, modelControls.continentRotationY, modelControls.continentRotationZ]}
         scale={[modelControls.continentScaleX, modelControls.continentScaleY, modelControls.continentScaleZ]}

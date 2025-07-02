@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { Environment, Center, Float, useDetectGPU, AdaptiveEvents } from "@react-three/drei";
+import { Center, Float, useDetectGPU, AdaptiveEvents } from "@react-three/drei";
 import { Suspense, lazy, useMemo } from "react";
 import { AnimationManager } from "./AnimationManager";
 import { useRef } from "react";
@@ -7,7 +7,7 @@ import { Perf } from "r3f-perf";
 import { useControls, Leva } from "leva";
 import ErrorBoundary from "./ErrorBoundary";
 import { OrbitControls } from "@react-three/drei";
-
+import { CubeTextureLoader } from "three";
 import {
   Bloom,
   DepthOfField,
@@ -29,6 +29,7 @@ import {
 import { Physics } from "@react-three/rapier";
 // import * as THREE from "three";
 import { Rotator } from "./Carosel";
+import Env from "./Env";
 const Header_v1 = lazy(() => import("./CD_header_v1_untransformed"));
 const Kreaton = lazy(() => import("./Kreaton_A"));
 const Earth2 = lazy(() => import("./Earthv4_UV"));
@@ -36,15 +37,11 @@ const Rocks = lazy(() => import("./Rocks"));
 // const PointingFinger = lazy(() => import("./PointingFinger").then(module => ({ default: module.PointingFinger })));
 // import { CDtext } from "./Site-headings";
 // import { NewFont } from "./FontWorkWebpage";
-import AnimatedStars from "./AnimatedStars";
+
 // import ShootingStars from "./unused/ShootingStars";
 // import { PhysicsDemo } from "./unused/PhysicsDemo";
 
 const isDevelopment = import.meta.env.DEV;
-const localModelUrl = "/sci-fi-nebula-space-planet_2K.exr";
-const remoteModelUrl =
-  "https://files.creative-directors.com/creative-website/creative25/hdr/sci-fi-nebula-space-planet_2K.exr";
-const modelUrl = isDevelopment ? localModelUrl : remoteModelUrl;
 
 // Separate component for Leva controls to prevent re-renders
 function PostProcessingControls() {
@@ -359,11 +356,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   // Get lighting controls from separate component
   const lightingControls = LightingControls();
 
-  // Memoize the model URL to prevent unnecessary recalculations
-  const memoizedModelUrl = useMemo(() => {
-    console.log(`Loading model from: ${modelUrl}`);
-    return modelUrl;
-  }, []);
+
 
   // Leva control for rocks active state
   useControls({
@@ -378,12 +371,7 @@ export function SceneCanvas({ scrollContainerRef }) {
     },
   });
 
-  // Memoize AnimatedStars props to prevent unnecessary re-renders
-  const starsProps = useMemo(() => ({
-    radius: 100,
-    depth: 50,
-    count: 2000 // Reduced from 5000 for better performance
-  }), []);
+
 
   return (
     <>
@@ -397,7 +385,7 @@ export function SceneCanvas({ scrollContainerRef }) {
             stencil: false, // Disable stencil buffer if not needed
             depth: true,
           }}
-          dpr={1}
+
           // dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
           // frameloop="demand" // Only render when needed
           performance={{ min: 0.5 }} // Allow frame drops for better performance
@@ -410,19 +398,8 @@ export function SceneCanvas({ scrollContainerRef }) {
         >
           <AdaptiveEvents />
 
-          <Suspense name="AnimatedStars" fallback={null}>
-            <AnimatedStars {...starsProps} />
-          </Suspense>
           <Suspense name="Environment" fallback={null}>
-            {/* <Environment files={memoizedModelUrl} backgroundRotation={[0, Math.PI / 2, 0]}
-              background={false} backgroundIntensity={0} environmentIntensity={1} /> */}
-            <Environment
-              files={memoizedModelUrl}
-              backgroundRotation={[0, Math.PI / 2, 0]}
-              background={true}
-              backgroundIntensity={1}
-              environmentIntensity={0}
-            />
+            <Env />
           </Suspense>
           <Suspense name="Earth2" fallback={null}>
             <ErrorBoundary name="Earth2">
@@ -500,47 +477,6 @@ export function SceneCanvas({ scrollContainerRef }) {
           <DepthOfField target={[0, 0, 13]} focalLength={0.3} bokehScale={15} height={700} />
         </EffectComposer> */}
           </group>
-
-          {lightingControls.ambientLightEnabled && (
-            <ambientLight
-              name="ambientLight"
-              intensity={lightingControls.ambientLightIntensity}
-              color={lightingControls.ambientLightColor}
-            />
-          )}
-
-          {lightingControls.spotLightEnabled && (
-            <spotLight
-              name="spotLight"
-              position={[
-                lightingControls.spotLightPosition.x,
-                lightingControls.spotLightPosition.y,
-                lightingControls.spotLightPosition.z
-              ]}
-              scale={lightingControls.spotLightScale}
-              intensity={lightingControls.spotLightIntensity}
-              color={lightingControls.spotLightColor}
-              angle={lightingControls.spotLightAngle}
-              penumbra={lightingControls.spotLightPenumbra}
-              distance={lightingControls.spotLightDistance}
-              decay={lightingControls.spotLightDecay}
-            />
-          )}
-
-          {lightingControls.pointLightEnabled && (
-            <pointLight
-              name="pointLight"
-              position={[
-                lightingControls.pointLightPosition.x,
-                lightingControls.pointLightPosition.y,
-                lightingControls.pointLightPosition.z
-              ]}
-              intensity={lightingControls.pointLightIntensity}
-              color={lightingControls.pointLightColor}
-              distance={lightingControls.pointLightDistance}
-              decay={lightingControls.pointLightDecay}
-            />
-          )}
 
         </Canvas>
       </Suspense>
