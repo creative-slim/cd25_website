@@ -453,6 +453,25 @@ const Earth2 = forwardRef((props, ref) => {
     updateMaterial(delta);
   });
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Dispose of water texture to prevent memory leaks
+      if (waterTexture) {
+        waterTexture.dispose();
+      }
+
+      // Dispose of custom material
+      if (materialRef.current) {
+        materialRef.current.dispose();
+      }
+
+      if (isDevelopment) {
+        console.log("🧹 Earth cleanup complete");
+      }
+    };
+  }, [waterTexture]);
+
   // Memoize geometry arguments to prevent re-creation on each render
   const sphereGeometryArgs = useMemo(() => [1.023, modelControls.sphereSegments, modelControls.sphereSegments], [modelControls.sphereSegments]);
   const innerSphereArgs = useMemo(() => [1.023, modelControls.sphereSegments, modelControls.sphereSegments], [modelControls.sphereSegments]);

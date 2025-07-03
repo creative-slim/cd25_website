@@ -11,18 +11,11 @@ import {
   Bloom,
   DepthOfField,
   EffectComposer,
-  // LensFlare,
   Noise,
-  // SMAA,
-  // SSAO,
   Vignette,
   ChromaticAberration,
-  // ColorAverage,
   Glitch,
   Pixelation,
-  // ToneMapping,
-  // Selection,
-  // Select,
 } from "@react-three/postprocessing";
 
 import { Physics } from "@react-three/rapier";

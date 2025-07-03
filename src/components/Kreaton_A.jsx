@@ -251,6 +251,30 @@ const Kreaton = forwardRef((props, ref) => {
     // Animation setup code...
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Kill any GSAP tweens targeting skin material
+      if (skinMaterialRef) {
+        gsap.killTweensOf(skinMaterialRef);
+      }
+
+      // Dispose of textures to prevent memory leaks
+      if (skinTexture) {
+        skinTexture.dispose();
+      }
+
+      // Dispose of materials
+      if (skinMaterial) {
+        skinMaterial.dispose();
+      }
+
+      if (DEBUG_LOGS) {
+        console.log("🧹 Kreaton cleanup complete");
+      }
+    };
+  }, [skinTexture, skinMaterial]);
+
   useFrame((state, delta) => {
     if (skinMaterial && skinMaterial.map) {
       skinMaterial.map.rotation += delta * 0.1;

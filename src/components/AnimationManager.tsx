@@ -135,6 +135,22 @@ export function AnimationManager({
   const initializedRef = useRef(false);
   const initialAnimationPlayedRef = useRef(false);
 
+  // Memory leak detection
+  useEffect(() => {
+    if (!DEBUG_LOGS) return;
+
+    const interval = setInterval(() => {
+      if ('memory' in performance) {
+        const memory = (performance as any).memory;
+        const usedMB = memory.usedJSHeapSize / 1048576;
+        const totalMB = memory.totalJSHeapSize / 1048576;
+        logRef.current("system", `Memory: ${usedMB.toFixed(1)}MB / ${totalMB.toFixed(1)}MB`);
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Memoize refs to prevent unnecessary re-renders
   const memoizedRefs = useMemo(() => ({
     kreatonRef,
@@ -1189,9 +1205,11 @@ export function AnimationManager({
         },
       });
 
-      // Cleanup logic for GSAP, ScrollTrigger, and timeouts
+      // Comprehensive cleanup logic for GSAP, ScrollTrigger, and timeouts
       return () => {
         initializedRef.current = false;
+
+        // Clear all timeouts
         if (explosionTimeoutRef.current) {
           clearTimeout(explosionTimeoutRef.current);
           explosionTimeoutRef.current = null;
@@ -1200,10 +1218,45 @@ export function AnimationManager({
           clearTimeout(pointCycleTimeoutRef.current);
           pointCycleTimeoutRef.current = null;
         }
-        // Kill all GSAP timelines and ScrollTriggers to prevent memory leaks
-        gsap.globalTimeline.clear();
+
+        // Kill all GSAP tweens targeting specific objects
+        gsap.killTweensOf(camera.position);
+        gsap.killTweensOf(cameraTargetRef.current);
+        gsap.killTweensOf(camera, "fov");
+
+        // Kill any tweens targeting component refs
+        if (kreatonRef.current) {
+          gsap.killTweensOf(kreatonRef.current);
+        }
+        if (earthRef.current) {
+          gsap.killTweensOf(earthRef.current);
+        }
+        if (rotatorRef.current) {
+          gsap.killTweensOf(rotatorRef.current);
+        }
+        if (cdTextRef.current) {
+          gsap.killTweensOf(cdTextRef.current);
+        }
+
+        // Kill all ScrollTriggers to prevent memory leaks
         if (typeof ScrollTrigger !== 'undefined') {
           ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+        }
+
+        // Clear global timeline
+        gsap.globalTimeline.clear();
+
+        // Stop Earth rotation if active
+        if (earthRotationRef.current) {
+          gsap.ticker.remove(earthRotationRef.current);
+          earthRotationRef.current = null;
+        }
+
+        // Reset state
+        setIsEarthRotating(false);
+
+        if (DEBUG_LOGS) {
+          logRef.current("system", "🧹 ANIMATION MANAGER CLEANUP COMPLETE");
         }
       };
     },

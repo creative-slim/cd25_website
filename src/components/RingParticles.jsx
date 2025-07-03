@@ -4,7 +4,13 @@ import * as THREE from "three";
 import gsap from "gsap";
 import { distributedRingPoints, randomColor } from "../utils/particleUtils";
 
-const NUM_PARTICLES = 300;
+// Performance tiers for LOD system
+const PERFORMANCE_TIERS = {
+    LOW: { particleCount: 100, updateRate: 2 }, // Update every 2 frames
+    MEDIUM: { particleCount: 200, updateRate: 1 }, // Update every frame
+    HIGH: { particleCount: 300, updateRate: 1 }, // Update every frame
+};
+
 const RING_RADIUS = 3.5;
 const PARTICLE_LENGTH = 0.15;
 const PARTICLE_WIDTH = 0.01;
@@ -39,49 +45,87 @@ const RingParticles = forwardRef(function RingParticles({ center = new THREE.Vec
     const globalOpacity = useRef({ value: 0 });
     const running = useRef(false);
     const fadeTween = useRef(null);
+    const frameCount = useRef(0);
+
+    // Performance detection and LOD
+    const performanceTier = useMemo(() => {
+        // Simple performance detection based on device capabilities
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const isLowEnd = navigator.hardwareConcurrency <= 4;
+
+        if (isMobile || isLowEnd) return PERFORMANCE_TIERS.LOW;
+        if (window.devicePixelRatio > 2) return PERFORMANCE_TIERS.MEDIUM;
+        return PERFORMANCE_TIERS.HIGH;
+    }, []);
 
     // Precompute ring positions and directions
     const ringData = useMemo(() => {
-        const starts = distributedRingPoints(NUM_PARTICLES, RING_RADIUS, Y_JITTER);
+        const particleCount = performanceTier.particleCount;
+        const starts = distributedRingPoints(particleCount, RING_RADIUS, Y_JITTER);
         const dirs = starts.map(pt => pt.clone().normalize());
-        const colors = Array.from({ length: NUM_PARTICLES }, () => randomColor());
+        const colors = Array.from({ length: particleCount }, () => randomColor());
         return { starts, dirs, colors };
-    }, []);
+    }, [performanceTier.particleCount]);
 
     // Set up per-instance color attribute
     useEffect(() => {
         if (!meshRef.current) return;
-        const colors = new Float32Array(NUM_PARTICLES * 3);
-        for (let i = 0; i < NUM_PARTICLES; i++) {
+        const particleCount = performanceTier.particleCount;
+        const colors = new Float32Array(particleCount * 3);
+        for (let i = 0; i < particleCount; i++) {
             const color = new THREE.Color(ringData.colors[i]);
             colors[i * 3 + 0] = color.r;
             colors[i * 3 + 1] = color.g;
             colors[i * 3 + 2] = color.b;
         }
         meshRef.current.geometry.setAttribute("color", new THREE.InstancedBufferAttribute(colors, 3));
-    }, [ringData]);
+    }, [ringData, performanceTier.particleCount]);
+
+    // Reusable THREE objects to prevent garbage collection
+    const reusableObjects = useMemo(() => ({
+        pos: new THREE.Vector3(),
+        mat: new THREE.Matrix4(),
+        up: new THREE.Vector3(0, 1, 0),
+        quat: new THREE.Quaternion(),
+        rotMat: new THREE.Matrix4(),
+        scaleMat: new THREE.Matrix4(),
+    }), []);
 
     // Animation loop
     useFrame((_, delta) => {
         if (!running.current || !meshRef.current) return;
+
+        // LOD: Skip updates based on performance tier
+        frameCount.current++;
+        if (frameCount.current % performanceTier.updateRate !== 0) return;
+
         progress.current += (delta * PARTICLE_SPEED) / EXPAND_DISTANCE;
         if (progress.current > 1) progress.current = 1;
 
-        for (let i = 0; i < NUM_PARTICLES; i++) {
+        const particleCount = performanceTier.particleCount;
+        for (let i = 0; i < particleCount; i++) {
             // Position = start + dir * (progress * EXPAND_DISTANCE)
-            const pos = ringData.starts[i].clone().add(
+            reusableObjects.pos.copy(ringData.starts[i]).add(
                 ringData.dirs[i].clone().multiplyScalar(progress.current * EXPAND_DISTANCE)
             );
-            // Matrix math
-            const mat = new THREE.Matrix4();
-            mat.makeTranslation(pos.x + center.x, pos.y + center.y, pos.z + center.z);
+
+            // Matrix math using reusable objects
+            reusableObjects.mat.makeTranslation(
+                reusableObjects.pos.x + center.x,
+                reusableObjects.pos.y + center.y,
+                reusableObjects.pos.z + center.z
+            );
+
             // Orient outward
             const look = ringData.dirs[i];
-            const up = new THREE.Vector3(0, 1, 0);
-            const quat = new THREE.Quaternion().setFromUnitVectors(up, look);
-            mat.multiply(new THREE.Matrix4().makeRotationFromQuaternion(quat));
-            mat.multiply(new THREE.Matrix4().makeScale(PARTICLE_WIDTH, PARTICLE_LENGTH, PARTICLE_WIDTH));
-            meshRef.current.setMatrixAt(i, mat);
+            reusableObjects.quat.setFromUnitVectors(reusableObjects.up, look);
+            reusableObjects.rotMat.makeRotationFromQuaternion(reusableObjects.quat);
+            reusableObjects.scaleMat.makeScale(PARTICLE_WIDTH, PARTICLE_LENGTH, PARTICLE_WIDTH);
+
+            reusableObjects.mat.multiply(reusableObjects.rotMat);
+            reusableObjects.mat.multiply(reusableObjects.scaleMat);
+
+            meshRef.current.setMatrixAt(i, reusableObjects.mat);
         }
         meshRef.current.instanceMatrix.needsUpdate = true;
         // Update opacity uniform
@@ -125,10 +169,25 @@ const RingParticles = forwardRef(function RingParticles({ center = new THREE.Vec
         if (meshRef.current) meshRef.current.visible = false;
     }, []);
 
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            // Kill any GSAP tweens
+            if (fadeTween.current) {
+                fadeTween.current.kill();
+            }
+
+            // Dispose of material if it exists
+            if (meshRef.current && meshRef.current.material) {
+                meshRef.current.material.dispose();
+            }
+        };
+    }, []);
+
     return (
         <instancedMesh
             ref={meshRef}
-            args={[null, null, NUM_PARTICLES]}
+            args={[null, null, performanceTier.particleCount]}
             visible={false}
             renderOrder={2}
         >

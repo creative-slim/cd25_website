@@ -9,7 +9,7 @@ export default defineConfig({
     'process': {},
   },
   build: {
-    // Output a single bundle
+    // Single bundle for Webflow integration
     rollupOptions: {
       output: {
         manualChunks: undefined, // Disable code splitting

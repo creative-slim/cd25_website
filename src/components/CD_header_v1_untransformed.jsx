@@ -120,6 +120,26 @@ const Header_v1 = forwardRef((props, ref) => {
 
   }, { dependencies: [nodes, goldKeys, whiteKeys], scope: groupRef });
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Kill any GSAP tweens targeting this component's meshes
+      if (goldMeshRefs.current.length > 0) {
+        gsap.killTweensOf(goldMeshRefs.current);
+      }
+      if (whiteMeshRefs.current.length > 0) {
+        gsap.killTweensOf(whiteMeshRefs.current);
+      }
+      if (groupRef.current) {
+        gsap.killTweensOf(groupRef.current);
+      }
+
+      if (DEBUG_LOGS) {
+        console.log("🧹 Header cleanup complete");
+      }
+    };
+  }, []);
+
   // Expose animation controls to parent component
   useImperativeHandle(ref, () => ({
     playAnimation: () => {
