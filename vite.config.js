@@ -9,13 +9,13 @@ export default defineConfig({
     'process': {},
   },
   build: {
-    // Single bundle for Webflow integration
+    // Single bundle configuration
     rollupOptions: {
       output: {
-        manualChunks: undefined, // Disable code splitting
-        entryFileNames: 'creative-directors.[hash].js', // Single output file
-        chunkFileNames: 'creative-directors.[hash].js',
-        assetFileNames: 'creative-directors.[hash].[ext]'
+        manualChunks: () => 'app', // Force all chunks into one
+        entryFileNames: 'app.[hash].js',
+        chunkFileNames: 'app.[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]'
       }
     },
     // Minify the output
@@ -25,13 +25,6 @@ export default defineConfig({
     // Ensure we're building for production
     target: 'es2015',
     // Optimize the bundle
-    cssCodeSplit: false,
-    // Ensure we're building a library
-    lib: {
-      entry: 'src/main.jsx', // Your entry point
-      name: 'CreativeDirectors',
-      fileName: 'creative-directors',
-      formats: ['iife'] // Immediately Invoked Function Expression
-    }
+    cssCodeSplit: false
   }
 })
