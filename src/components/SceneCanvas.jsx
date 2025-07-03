@@ -30,6 +30,7 @@ import * as THREE from "three";
 import { Rotator } from "./Carosel";
 import Env from "./Env";
 import EnergyParticles from "./EnergyParticles";
+import RingParticles from "./RingParticles";
 const Header_v1 = lazy(() => import("./CD_header_v1_untransformed"));
 const Kreaton = lazy(() => import("./Kreaton_A"));
 const Earth2 = lazy(() => import("./Earthv4_UV"));
@@ -356,6 +357,7 @@ export function SceneCanvas({ scrollContainerRef }) {
   // const pointingFingerRef = useRef();
   const cdTextRef = useRef();
   const energyParticlesRef = useRef();
+  const ringParticlesRef = useRef();
 
   // Energy particles state - starts hidden by default
   const [energyParticlesActive, setEnergyParticlesActive] = useState(false);
@@ -470,6 +472,9 @@ export function SceneCanvas({ scrollContainerRef }) {
               center={getKreatonCenter()}
             />
           </Suspense>
+          <Suspense name="RingParticles" fallback={null}>
+            <RingParticles ref={ringParticlesRef} center={getKreatonCenter()} />
+          </Suspense>
           <Suspense name="AnimationManager" fallback={null}>
             <AnimationManager
               kreatonRef={kreatonRef}
@@ -479,6 +484,7 @@ export function SceneCanvas({ scrollContainerRef }) {
               cdTextRef={cdTextRef}
               scrollContainerRef={scrollContainerRef}
               setEnergyParticlesActive={setEnergyParticlesActive}
+              ringParticlesRef={ringParticlesRef}
             />
           </Suspense>
 
@@ -508,6 +514,15 @@ export function SceneCanvas({ scrollContainerRef }) {
           </group>
 
         </Canvas>
+        {/* TEMP: Test button to trigger ring explosion */}
+        {isDevelopment && (
+          <button
+            style={{ position: "absolute", top: 10, right: 10, zIndex: 1000 }}
+            onClick={() => ringParticlesRef.current?.triggerExplosion()}
+          >
+            Trigger Ring Explosion
+          </button>
+        )}
       </Suspense>
     </>
   );

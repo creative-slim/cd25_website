@@ -83,6 +83,7 @@ interface AnimationManagerProps {
   pointingFingerRef?: any;
   cdTextRef?: any;
   setEnergyParticlesActive?: (active: boolean) => void;
+  ringParticlesRef?: any;
 }
 
 // Animation options type for camera and FOV transitions
@@ -116,11 +117,12 @@ export function AnimationManager({
   pointingFingerRef,
   cdTextRef,
   setEnergyParticlesActive,
+  ringParticlesRef,
 }: AnimationManagerProps) {
   const { camera } = useThree(); // camera is always PerspectiveCamera in this app
-  const mainTimelineRef = useRef(null);
+  const mainTimelineRef = useRef<any>(null);
   const [modelReady, setModelReady] = useState(false);
-  const earthRotationRef = useRef(null);
+  const earthRotationRef = useRef<any>(null);
   const [isEarthRotating, setIsEarthRotating] = useState(false);
   const logRef = useRef((type: string, msg: string, ...args: any[]) => {
     if (type === "error") console.error(msg, ...args);
@@ -128,8 +130,8 @@ export function AnimationManager({
   });
   const cameraTargetRef = useRef(new THREE.Vector3(0, 1, 0));
   const hasPushedRef = useRef(false);
-  const explosionTimeoutRef = useRef(null);
-  const pointCycleTimeoutRef = useRef(null);
+  const explosionTimeoutRef = useRef<any>(null);
+  const pointCycleTimeoutRef = useRef<any>(null);
   const initializedRef = useRef(false);
   const initialAnimationPlayedRef = useRef(false);
 
@@ -692,7 +694,6 @@ export function AnimationManager({
           console.log(" --------section 1 onLeaveBack");
           logRef.current("model", "REVERSE: Reverting from SALUTE to WALKING");
           kreatonTransitionFromCurrentToAnimation("WALKING");
-          startEarthRotation();
           // setCameraTarget( DELETE
           //   { x: 0, y: 1, z: 0 },
           //   { duration: 1, ease: "sine.inOut" }
@@ -917,6 +918,10 @@ export function AnimationManager({
                   // Hide clump after explosion
                   // clumpRef.current.setVisibility(false);
                 }
+                // Trigger ring particles explosion
+                if (ringParticlesRef && ringParticlesRef.current && ringParticlesRef.current.triggerExplosion) {
+                  ringParticlesRef.current.triggerExplosion();
+                }
                 explosionTimeoutRef.current = null;
 
                 // Transition to IDLE after explosion
@@ -924,7 +929,7 @@ export function AnimationManager({
                   logRef.current("model", "Transitioning to IDLE animation");
                   kreatonTransitionFromCurrentToAnimation("IDLE");
                 }
-              }, animationDuration * 1000 * 0.7); // Trigger at 70% of push animation
+              }, (animationDuration * 1000 * 0.7) - (ENERGY_FADE_OUT_BEFORE_EXPLOSION * 1000)); // Trigger at 70% of push animation
             } else {
               logRef.current("error", "PUSH animation not found! Using fallback.");
               explosionTimeoutRef.current = setTimeout(() => {
@@ -934,6 +939,10 @@ export function AnimationManager({
                   stopEarthRotation();
                   // Hide clump after explosion
                   // clumpRef.current.setVisibility(false);
+                }
+                // Trigger ring particles explosion
+                if (ringParticlesRef && ringParticlesRef.current && ringParticlesRef.current.triggerExplosion) {
+                  ringParticlesRef.current.triggerExplosion();
                 }
                 explosionTimeoutRef.current = null;
               }, 1000);
