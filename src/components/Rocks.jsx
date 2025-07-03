@@ -77,6 +77,46 @@ function generateLightningPath(start, end, segments, chaos) {
     return points;
 }
 
+// Define a fixed glossy color palette for good rocks
+const GOOD_ROCK_PALETTE = [
+    new THREE.Color(0x1a237e), // Deep blue
+    new THREE.Color(0xffffff), // White
+    new THREE.Color(0x212121), // Black
+    new THREE.Color(0xbdbdbd), // Light gray
+    new THREE.Color(0x1976d2), // Bright blue
+];
+
+// Helper to generate non-overlapping positions for good mode
+function generateNonOverlappingPositions(num, radius, minDistance) {
+    const positions = [];
+    const maxAttempts = 1000;
+    for (let i = 0; i < num; i++) {
+        let attempt = 0;
+        let pos;
+        while (attempt < maxAttempts) {
+            // Place on a ring in XZ, with some Y jitter
+            const theta = Math.random() * Math.PI * 2;
+            const y = (Math.random() - 0.5) * 0.2; // small vertical spread
+            pos = new THREE.Vector3(
+                radius * Math.cos(theta),
+                y,
+                radius * Math.sin(theta)
+            );
+            let tooClose = false;
+            for (let j = 0; j < positions.length; j++) {
+                if (pos.distanceTo(positions[j]) < minDistance) {
+                    tooClose = true;
+                    break;
+                }
+            }
+            if (!tooClose) break;
+            attempt++;
+        }
+        positions.push(pos);
+    }
+    return positions;
+}
+
 const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_COLOR, ...props }, ref) => {
     const groupRef = useRef();
     const shieldRef = useRef();
@@ -113,8 +153,21 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
     );
     const goodModeProgress = useRef({ value: 0 }); // Using an object to be tweenable by gsap
     const goodModeTimeline = useRef();
-    const rockMaterials = useRef(Array.from({ length: NUM_ROCKS }, () => evilRockMaterial.clone()));
-    const goodRockColors = useRef(Array.from({ length: NUM_ROCKS }, () => new THREE.Color().setHSL(Math.random(), 0.7, 0.6)));
+    const rockMaterials = useRef(Array.from({ length: NUM_ROCKS }, () => {
+        // All good rocks use the same glossy material properties
+        return new THREE.MeshStandardMaterial({
+            color: 0xffffff, // Will be set per rock below
+            roughness: 0.05,
+            metalness: 0.95,
+            envMapIntensity: 1.0,
+            transparent: true,
+            opacity: 1,
+        });
+    }));
+    const goodRockColors = useRef(Array.from({ length: NUM_ROCKS }, () => {
+        // Randomly pick a color from the palette
+        return GOOD_ROCK_PALETTE[Math.floor(Math.random() * GOOD_ROCK_PALETTE.length)].clone();
+    }));
 
     const calmTheStorm = () => {
         if (goodModeTimeline.current) {
@@ -156,7 +209,38 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         },
     });
 
-    // Leva control for "good mode"
+    // Leva controls for inner glow
+    const [glowParams, setGlowParams] = useState({
+        size: 0.7,
+        intensity: 1.5,
+        opacity: 0.7,
+    });
+    useControls("Rocks Glow", {
+        "Glow Size": {
+            value: 0.7,
+            min: 0.3,
+            max: 1.0,
+            step: 0.01,
+            onChange: (v) => setGlowParams((p) => ({ ...p, size: v })),
+        },
+        "Glow Intensity": {
+            value: 1.5,
+            min: 0.1,
+            max: 5.0,
+            step: 0.05,
+            onChange: (v) => setGlowParams((p) => ({ ...p, intensity: v })),
+        },
+        "Glow Opacity": {
+            value: 0.7,
+            min: 0.1,
+            max: 1.0,
+            step: 0.01,
+            onChange: (v) => setGlowParams((p) => ({ ...p, opacity: v })),
+        },
+    });
+
+    // Emissive mode state
+    const [emissiveMode, setEmissiveMode] = useState(false);
     useControls("Rocks Mode", {
         "Peaceful Mode": {
             value: false,
@@ -167,6 +251,10 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                     unleashTheStorm();
                 }
             },
+        },
+        "Emissive Mode": {
+            value: false,
+            onChange: (v) => setEmissiveMode(v),
         },
     });
 
@@ -253,6 +341,12 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         getShield: () => shieldRef.current,
     }));
 
+    const goodModePositions = useRef(generateNonOverlappingPositions(
+        NUM_ROCKS,
+        (MIN_ORBIT_RADIUS + MAX_ORBIT_RADIUS) / 2 + 0.3, // slightly larger ring
+        ROCK_SIZE * 2.3 // larger buffer for more separation
+    ));
+
     useFrame((state) => {
         const time = state.clock.getElapsedTime();
         const tNow = performance.now() / 1000;
@@ -306,9 +400,18 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
 
             // Interpolate material properties for the good rock
             const goodMaterial = goodRock.material;
-            goodMaterial.color.lerpColors(evilRockMaterial.color, goodRockColors.current[i], goodP);
-            goodMaterial.roughness = THREE.MathUtils.lerp(1.0, 0.1, goodP);
-            goodMaterial.metalness = THREE.MathUtils.lerp(0.0, 0.2, goodP);
+            // Set color directly from the palette (no lerp with evil color)
+            goodMaterial.color.copy(goodRockColors.current[i]);
+            goodMaterial.roughness = 0.05;
+            goodMaterial.metalness = 0.95;
+            // Emissive mode logic
+            if (emissiveMode && goodP > 0.5) {
+                goodMaterial.emissive.copy(goodRockColors.current[i]);
+                goodMaterial.emissiveIntensity = 3.0;
+            } else {
+                goodMaterial.emissive.set(0x000000);
+                goodMaterial.emissiveIntensity = 0.0;
+            }
 
             const p = newProgress[i];
             const { phi, theta, orbitRadius, orbitSpeed } = rockProperties.current[i];
@@ -328,14 +431,27 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
             const currentPhi = THREE.MathUtils.lerp(phi, ringPhi, goodP);
             const goodSpeed = 0.1 + ((orbitRadius - MIN_ORBIT_RADIUS) / (MAX_ORBIT_RADIUS - MIN_ORBIT_RADIUS)) * 0.2;
             const currentSpeed = THREE.MathUtils.lerp(orbitSpeed, goodSpeed, goodP);
-
             const orbitTheta = theta + currentSpeed * time;
 
-            // Reuse THREE objects instead of creating new ones
+            // For good mode, use non-overlapping positions
+            let goodPos = goodModePositions.current[i];
+            // Interpolate between evil and good positions
             targetOrbitPos.current.set(
-                orbitRadius * Math.sin(currentPhi) * Math.cos(orbitTheta),
-                orbitRadius * Math.cos(currentPhi),
-                orbitRadius * Math.sin(currentPhi) * Math.sin(orbitTheta)
+                THREE.MathUtils.lerp(
+                    orbitRadius * Math.sin(phi) * Math.cos(theta + orbitSpeed * time),
+                    goodPos.x,
+                    goodP
+                ),
+                THREE.MathUtils.lerp(
+                    orbitRadius * Math.cos(phi),
+                    goodPos.y,
+                    goodP
+                ),
+                THREE.MathUtils.lerp(
+                    orbitRadius * Math.sin(phi) * Math.sin(theta + orbitSpeed * time),
+                    goodPos.z,
+                    goodP
+                )
             );
 
             if (isReturningRef.current) {
@@ -434,7 +550,21 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                         material={rockMaterials.current[i]}
                         castShadow
                         receiveShadow
-                    />
+                    >
+                        {/* Inner glow sphere for good mode, now as a child */}
+                        <mesh
+                            visible={goodModeProgress.current.value > 0.5}
+                            scale={glowParams.size}
+                        >
+                            <sphereGeometry args={[ROCK_SIZE, 16, 16]} />
+                            <meshBasicMaterial
+                                color={goodRockColors.current[i].clone().lerp(new THREE.Color(0xffffff), 0.5)}
+                                transparent
+                                opacity={glowParams.opacity}
+                                blending={THREE.AdditiveBlending}
+                            />
+                        </mesh>
+                    </mesh>
                 </Fragment>
             ))}
             {Array.from({ length: NUM_ROCKS }).map((_, i) => (
