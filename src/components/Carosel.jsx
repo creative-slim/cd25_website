@@ -239,7 +239,7 @@ export const Rotator = forwardRef(({ ...props }, ref) => {
 
   // Function to clear active project classes when no card is in view
   const clearActiveProjectClasses = useCallback(() => {
-    const allProjectElements = document.querySelectorAll("[data-projects]");
+    const allProjectElements = document.querySelectorAll(".project-links-item");
     allProjectElements.forEach((el) => {
       if (el.classList.contains("active")) {
         if (DEBUG_LOGS) console.log("[CAROUSEL] Removing 'active' class from:", el);
