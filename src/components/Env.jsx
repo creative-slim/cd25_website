@@ -8,7 +8,7 @@ const backgroundTextureLocalUrl = "/sci-fi-nebula-space-planet_4K.jpg";
 const lightingTextureLocalUrl = "/artist_workshop_100.hdr";
 const lightingTextureRemoteUrl = "https://files.creative-directors.com/creative-website/creative25/hdr/artist_workshop_100.hdr";
 const backgroundTextureRemoteUrl =
-    "https://files.creative-directors.com/creative-website/creative25/background/sci-fi-nebula-space-planet_4K.webp";
+    "https://files.creative-directors.com/creative-website/creative25/background/sci-fi-nebula-space-planet_4K_2.webp";
 const backgroundTextureUrl = isDevelopment ? backgroundTextureLocalUrl : backgroundTextureRemoteUrl;
 
 // AnimatedStars component moved from SceneCanvas

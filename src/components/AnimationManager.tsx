@@ -765,6 +765,10 @@ export function AnimationManager({
             cdTextRef.current.hide();
           }
         },
+        onLeave: () => {
+          console.log(" --------section 2 onLeave");
+          rotatorRef.current.setObserverActive(false); // Disable observer when leaving section forward
+        },
         onLeaveBack: () => {
           console.log(" --------section 2 onLeaveBack");
           rotatorRef.current.setVisibility(false);

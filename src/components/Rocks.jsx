@@ -1,8 +1,10 @@
 import * as THREE from "three";
-import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment } from "react";
+import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useControls, folder } from "leva";
 import { gsap } from "gsap";
+import Portal from "./Portal";
+import SaturnRing from "./SaturnRing";
 
 const NUM_ROCKS = 100;
 const MIN_ORBIT_RADIUS = 4.5;
@@ -77,14 +79,17 @@ function generateLightningPath(start, end, segments, chaos) {
     return points;
 }
 
-// Define a fixed glossy color palette for good rocks
-const GOOD_ROCK_PALETTE = [
-    new THREE.Color(0x1a237e), // Deep blue
-    new THREE.Color(0xffffff), // White
-    new THREE.Color(0x212121), // Black
-    new THREE.Color(0xbdbdbd), // Light gray
-    new THREE.Color(0x1976d2), // Bright blue
-];
+// Vibrant rainbow palette matching the ring
+const RAINBOW_PALETTE = [
+
+    new THREE.Color(0xff0000), // Red
+    new THREE.Color(0xff7f00), // Orange-Red
+    new THREE.Color(0xffff00), // Yellow
+    new THREE.Color(0x00ff00), // Green
+    new THREE.Color(0x0000ff), // Blue
+    new THREE.Color(0x4b0082), // Indigo
+    new THREE.Color(0x9400d3), // Violet
+]
 
 // Helper to generate non-overlapping positions for good mode
 function generateNonOverlappingPositions(num, radius, minDistance) {
@@ -116,6 +121,16 @@ function generateNonOverlappingPositions(num, radius, minDistance) {
     }
     return positions;
 }
+
+// Ring config constants (tweak as needed)
+const RING_AVG_RADIUS = (MIN_ORBIT_RADIUS + MAX_ORBIT_RADIUS) / 2; // Match rocks' orbit
+const RING_CONFIGS = [
+    { type: 'ring', radius: RING_AVG_RADIUS - 1, tube: 1, opacity: 0.7, speed: 0.5, phase: 0 },
+    { type: 'ring', radius: RING_AVG_RADIUS + 1.1, tube: 0.7, opacity: 0.4, speed: 0.7, phase: 1.0 },
+    { type: 'ring', radius: RING_AVG_RADIUS + 2.9, tube: 1, opacity: 0.2, speed: 0.3, phase: 2.0 }
+];
+const RING_SCALE = [1, 1, 1]; // Adjust if you want elliptical ring
+const RING_POSITION = [0, 0, 0]; // Centered on earth
 
 const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_COLOR, ...props }, ref) => {
     const groupRef = useRef();
@@ -164,12 +179,31 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
             opacity: 1,
         });
     }));
-    const goodRockColors = useRef(Array.from({ length: NUM_ROCKS }, () => {
-        // Randomly pick a color from the palette
-        return GOOD_ROCK_PALETTE[Math.floor(Math.random() * GOOD_ROCK_PALETTE.length)].clone();
+    const goodRockColors = useRef(Array.from({ length: NUM_ROCKS }, (_, i) => {
+        return RAINBOW_PALETTE[i % RAINBOW_PALETTE.length].clone();
     }));
 
+    const [ringFade, setRingFade] = useState(0);
+    const fadeInSaturnRing = () => {
+        console.log("fadeInSaturnRing");
+        gsap.to({ val: ringFade }, {
+            val: 1,
+            duration: 0.7,
+            ease: 'power2.out',
+            onUpdate: function () { setRingFade(this.targets()[0].val); }
+        });
+    };
+    const fadeOutSaturnRing = () => {
+        gsap.to({ val: ringFade }, {
+            val: 0,
+            duration: 0.7,
+            ease: 'power2.in',
+            onUpdate: function () { setRingFade(this.targets()[0].val); }
+        });
+    };
+
     const calmTheStorm = () => {
+        console.log("calmTheStorm");
         if (goodModeTimeline.current) {
             goodModeTimeline.current.kill();
         }
@@ -177,17 +211,21 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
             value: 1,
             duration: GOOD_MODE_TRANSITION_TIME,
             ease: "power2.inOut",
+            onComplete: fadeInSaturnRing,
         });
     };
 
     const unleashTheStorm = () => {
+        console.log("unleashTheStorm");
         if (goodModeTimeline.current) {
             goodModeTimeline.current.kill();
         }
+        fadeOutSaturnRing(); // Start fade out immediately
         goodModeTimeline.current = gsap.to(goodModeProgress.current, {
             value: 0,
             duration: GOOD_MODE_TRANSITION_TIME,
-            ease: "power2.inOut",
+            ease: "power2.inOut"
+            // No onComplete here
         });
     };
 
@@ -400,18 +438,12 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
 
             // Interpolate material properties for the good rock
             const goodMaterial = goodRock.material;
-            // Set color directly from the palette (no lerp with evil color)
             goodMaterial.color.copy(goodRockColors.current[i]);
             goodMaterial.roughness = 0.05;
-            goodMaterial.metalness = 0.95;
-            // Emissive mode logic
-            if (emissiveMode && goodP > 0.5) {
-                goodMaterial.emissive.copy(goodRockColors.current[i]);
-                goodMaterial.emissiveIntensity = 3.0;
-            } else {
-                goodMaterial.emissive.set(0x000000);
-                goodMaterial.emissiveIntensity = 0.0;
-            }
+            goodMaterial.metalness = 1.0;
+            goodMaterial.envMapIntensity = 1.5;
+            goodMaterial.emissive.copy(goodRockColors.current[i]);
+            goodMaterial.emissiveIntensity = 2.0;
 
             const p = newProgress[i];
             const { phi, theta, orbitRadius, orbitSpeed } = rockProperties.current[i];
@@ -532,8 +564,21 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         }
     });
 
+    const goodP = goodModeProgress.current?.value || 0;
+    const ringRotationX = THREE.MathUtils.lerp(0, SATURN_TILT, goodP) + Math.PI / 2.95255;
+
+    // Compute faded configs for SaturnRing
+    const fadedRingConfigs = RING_CONFIGS.map(cfg => ({
+        ...cfg,
+        opacity: (cfg.opacity ?? 1) * ringFade
+    }));
+
     return (
         <group ref={groupRef} {...props}>
+            {/* Saturn-style rainbow ring, fade in/out */}
+            {ringFade > 0.001 && (
+                <SaturnRing configs={fadedRingConfigs} position={RING_POSITION} scale={RING_SCALE} rotation={[ringRotationX, 0, 0]} />
+            )}
             <Shield ref={shieldRef} radius={shieldRadius} color={shieldColor} />
             {Array.from({ length: NUM_ROCKS }).map((_, i) => (
                 <Fragment key={i}>
@@ -543,6 +588,7 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                         material={evilRockMaterial}
                         castShadow
                         receiveShadow
+                        renderOrder={1}
                     />
                     <mesh
                         ref={goodRocksRefs.current[i]}
@@ -550,6 +596,7 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                         material={rockMaterials.current[i]}
                         castShadow
                         receiveShadow
+                        renderOrder={1}
                     >
                         {/* Inner glow sphere for good mode, now as a child */}
                         <mesh

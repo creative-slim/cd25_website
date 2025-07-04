@@ -42,6 +42,7 @@ const getGradientShader = (opacity = 0.7, speed = 0.5, phase = 0) => ({
  * @param {Array} [props.configs] - Array of portal configs: { radius, tube, opacity, scale, position }
  * @param {Array} [props.position] - Position of the group
  * @param {Array} [props.scale] - Scale of the group
+ * @param {Array} [props.rotation] - Rotation of the group
  */
 export default function Portal({
     configs = [
@@ -50,7 +51,8 @@ export default function Portal({
         { radius: 0.62, tube: 0.012, opacity: 0.2, speed: 0.3, phase: 2.0 }
     ],
     position = [0, 0, 0],
-    scale = [1, 1, 1]
+    scale = [1, 1, 1],
+    rotation = [0, 0, 0],
 }) {
     const meshRefs = useRef([]);
 
@@ -63,12 +65,13 @@ export default function Portal({
     });
 
     return (
-        <group position={position} scale={scale}>
+        <group position={position} scale={scale} rotation={rotation}>
             {configs.map((cfg, i) => (
                 <mesh
                     key={i}
                     ref={el => meshRefs.current[i] = el}
                     raycast={() => null}
+                    scale={cfg.scale || [1, 1, 1]}
                 >
                     <torusGeometry args={[cfg.radius, cfg.tube, 64, 128]} />
                     <shaderMaterial
