@@ -649,12 +649,19 @@ export function AnimationManager({
             { x: 0, y: 0.5, z: 4 },
             { duration: 1, ease: "sine.inOut" }
           );
+
+          logRef.current("model", "REVERSE: Reverting from SALUTE to WALKING");
+          kreatonTransitionFromCurrentToAnimation("WALKING");
+
           if (cdTextRef?.current) {
             logRef.current("animation", "Playing CDtext intro animation");
             cdTextRef.current.resetAnimation();
             cdTextRef.current.moveUp();
             cdTextRef.current.show();
           }
+          setFOV(DEFAULT_FOV);
+          startEarthRotation();
+
         },
 
         // onLeaveBack: () => {
@@ -698,7 +705,7 @@ export function AnimationManager({
             { duration: 1, ease: "sine.inOut" }
           );
           setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
+            { x: 0, y: 2.2, z: 0 },
             { duration: 1, ease: "sine.inOut" }
           );
           setFOV(ZOOM_FOV);
@@ -708,18 +715,18 @@ export function AnimationManager({
         },
         onLeaveBack: () => {
           console.log(" --------section 1 onLeaveBack");
-          logRef.current("model", "REVERSE: Reverting from SALUTE to WALKING");
-          kreatonTransitionFromCurrentToAnimation("WALKING");
-          // setCameraTarget( DELETE
-          //   { x: 0, y: 1, z: 0 },
-          //   { duration: 1, ease: "sine.inOut" }
-          // );
-          setFOV(DEFAULT_FOV);
+          // logRef.current("model", "REVERSE: Reverting from SALUTE to WALKING");
+          // kreatonTransitionFromCurrentToAnimation("WALKING");
+          // // setCameraTarget( DELETE
+          // //   { x: 0, y: 1, z: 0 },
+          // //   { duration: 1, ease: "sine.inOut" }
+          // // );
+          // setFOV(DEFAULT_FOV);
         },
         onEnterBack: () => {
           console.log(" --------section 1 onEnterBack");
           setCameraTarget(
-            { x: 0, y: 1.5, z: 0 },
+            { x: 0, y: 2.2, z: 0 },
             { duration: 1, ease: "sine.inOut" }
           ); // to be verified
 
@@ -882,13 +889,21 @@ export function AnimationManager({
           if (clumpRef.current) {
             logRef.current("animation", "Calming the storm in Section 4");
             clumpRef.current.calmTheStorm();
+
+            // DRAMATIC CAMERA EFFECT: Move in and widen FOV when calming storm
+            logRef.current("animation", "Starting dramatic camera effect - moving closer and widening FOV");
+            setCameraPosition(
+              { x: 0, y: 1.5, z: 3 },
+              { duration: 2, ease: "power2.inOut" }
+            );
+            setFOV(WIDE_FOV, { duration: 2, ease: "power2.inOut" });
           }
           // CAMERA SETUP
-          setFOV(DEFAULT_FOV);
-          setCameraPosition(
-            { x: 0, y: 1.5, z: 10 },
-            { duration: 1, ease: "power3.inOut" }
-          );
+          // setFOV(DEFAULT_FOV);
+          // setCameraPosition(
+          //   { x: 0, y: 1.5, z: 10 },
+          //   { duration: 1, ease: "power3.inOut" }
+          // );
           setCameraTarget(
             { x: 0, y: 0, z: 0 },
             { duration: 1, ease: "power2.inOut" }
@@ -926,6 +941,8 @@ export function AnimationManager({
                   if (kreatonRef.current && kreatonRef.current.setSkinEmissiveIntensity) {
                     kreatonRef.current.setSkinEmissiveIntensity(KREATON_DEFAULT_EMISSIVE_INTENSITY);
                   }
+
+
                 }, (animationDuration * 1000 * 0.7) - (ENERGY_FADE_OUT_BEFORE_EXPLOSION * 1000));
               }
 
@@ -943,6 +960,14 @@ export function AnimationManager({
                   ringParticlesRef.current.triggerExplosion();
                 }
                 explosionTimeoutRef.current = null;
+
+                // REVERT DRAMATIC CAMERA EFFECT: Move back and restore default FOV
+                logRef.current("animation", "Reverting dramatic camera effect - moving back and restoring default FOV");
+                setCameraPosition(
+                  { x: 0, y: 1.5, z: 10 },
+                  { duration: 1.5, ease: "power2.inOut" }
+                );
+                setFOV(DEFAULT_FOV, { duration: 1.5, ease: "power2.inOut" });
 
                 // Transition to IDLE after explosion
                 if (currentAnimations.includes("IDLE")) {
@@ -965,6 +990,14 @@ export function AnimationManager({
                   ringParticlesRef.current.triggerExplosion();
                 }
                 explosionTimeoutRef.current = null;
+
+                // REVERT DRAMATIC CAMERA EFFECT: Move back and restore default FOV (fallback)
+                logRef.current("animation", "Reverting dramatic camera effect (fallback) - moving back and restoring default FOV");
+                setCameraPosition(
+                  { x: 0, y: 1.5, z: 10 },
+                  { duration: 1.5, ease: "power2.inOut" }
+                );
+                setFOV(DEFAULT_FOV, { duration: 1.5, ease: "power2.inOut" });
               }, 1000);
             }
           } else if (hasPushedRef.current) {

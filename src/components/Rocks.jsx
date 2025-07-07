@@ -141,6 +141,12 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
     const linesRef = useRef(Array.from({ length: NUM_ROCKS }, () => useRef()));
     const overallOpacity = useRef({ value: 0 }); // Start fully transparent
 
+    // Pre-generated lightning paths for performance
+    const lightningPaths = useRef(Array.from({ length: NUM_ROCKS }, () =>
+        Array.from({ length: 5 }, () => []) // 5 pre-generated paths per rock
+    ));
+    const lightningPathIndex = useRef(Array.from({ length: NUM_ROCKS }, () => 0));
+
     // Use refs instead of state for values that change every frame
     const progressRef = useRef(Array(NUM_ROCKS).fill(0));
     const isFallingRef = useRef(false);
@@ -385,7 +391,11 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         ROCK_SIZE * 2.3 // larger buffer for more separation
     ));
 
+    // Frame skipping for performance
+    const frameCount = useRef(0);
+
     useFrame((state) => {
+        frameCount.current++;
         const time = state.clock.getElapsedTime();
         const tNow = performance.now() / 1000;
         const goodP = goodModeProgress.current.value;
@@ -424,6 +434,9 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         }
         progressRef.current = newProgress;
 
+        // Skip expensive calculations every other frame for performance
+        const skipFrame = frameCount.current % 2 === 0;
+
         for (let i = 0; i < NUM_ROCKS; i++) {
             const evilRock = rocksRefs.current[i].current;
             const goodRock = goodRocksRefs.current[i].current;
@@ -436,14 +449,21 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
             evilRock.visible = goodP < 1 && currentOverallOpacity > 0;
             goodRock.visible = goodP > 0 && currentOverallOpacity > 0;
 
-            // Interpolate material properties for the good rock
-            const goodMaterial = goodRock.material;
-            goodMaterial.color.copy(goodRockColors.current[i]);
-            goodMaterial.roughness = 0.05;
-            goodMaterial.metalness = 1.0;
-            goodMaterial.envMapIntensity = 1.5;
-            goodMaterial.emissive.copy(goodRockColors.current[i]);
-            goodMaterial.emissiveIntensity = 2.0;
+            // Only update material properties if they haven't been set yet or if the good mode progress changed significantly
+            // Skip expensive material updates on alternate frames
+            if (!skipFrame) {
+                const goodMaterial = goodRock.material;
+                if (!goodMaterial._propertiesSet || Math.abs(goodMaterial._lastGoodP - goodP) > 0.01) {
+                    goodMaterial.color.copy(goodRockColors.current[i]);
+                    goodMaterial.roughness = 0.05;
+                    goodMaterial.metalness = 1.0;
+                    goodMaterial.envMapIntensity = 1.5;
+                    goodMaterial.emissive.copy(goodRockColors.current[i]);
+                    goodMaterial.emissiveIntensity = 2.0;
+                    goodMaterial._propertiesSet = true;
+                    goodMaterial._lastGoodP = goodP;
+                }
+            }
 
             const p = newProgress[i];
             const { phi, theta, orbitRadius, orbitSpeed } = rockProperties.current[i];
@@ -507,7 +527,17 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                     );
                     shieldSurfacePoint.current.add(twitchOffset.current);
 
-                    const path = generateLightningPath(basePos.current, shieldSurfacePoint.current, LIGHTNING_SEGMENTS, LIGHTNING_CHAOS);
+                    // Use pre-generated lightning path for better performance
+                    const pathIndex = lightningPathIndex.current[i];
+                    let path = lightningPaths.current[i][pathIndex];
+
+                    // Regenerate path if empty or cycle to next one
+                    if (path.length === 0 || Math.random() < 0.1) { // 10% chance to regenerate
+                        path = generateLightningPath(basePos.current, shieldSurfacePoint.current, LIGHTNING_SEGMENTS, LIGHTNING_CHAOS);
+                        lightningPaths.current[i][pathIndex] = path;
+                        lightningPathIndex.current[i] = (pathIndex + 1) % 5;
+                    }
+
                     line.geometry.setFromPoints(path);
                 }
 
@@ -588,7 +618,7 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                         material={evilRockMaterial}
                         castShadow
                         receiveShadow
-                        renderOrder={1}
+                        renderOrder={3}
                     />
                     <mesh
                         ref={goodRocksRefs.current[i]}
@@ -596,7 +626,7 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
                         material={rockMaterials.current[i]}
                         castShadow
                         receiveShadow
-                        renderOrder={1}
+                        renderOrder={3}
                     >
                         {/* Inner glow sphere for good mode, now as a child */}
                         <mesh

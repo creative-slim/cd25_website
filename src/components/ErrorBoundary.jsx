@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from '@react-three/drei';
 
 class ErrorBoundary extends React.Component {
     constructor(props) {
@@ -24,13 +25,19 @@ class ErrorBoundary extends React.Component {
             }
             const componentName = this.props.name || "A component";
             return <group>
-                <mesh>
-                    <boxGeometry args={[1, 1, 1]} />
-                    <meshStandardMaterial color="red" />
-                    <object3d>
-                        <text>Error in {componentName}</text>
-                    </object3d>
+                <mesh position={[0, 0, 0]}>
+                    <boxGeometry args={[2, 0.5, 0.1]} />
+                    <meshStandardMaterial color="red" transparent opacity={0.7} />
                 </mesh>
+                <Text
+                    position={[0, 0, 0.1]}
+                    fontSize={0.2}
+                    color="white"
+                    anchorX="center"
+                    anchorY="middle"
+                >
+                    Error in {componentName}
+                </Text>
             </group>;
         }
 

@@ -4,7 +4,7 @@ Command: npx gltfjsx@6.5.3 ./public/earthv4_UV.glb --transform
 Files: ./public/earthv4_UV.glb [356.76KB] > /Users/slim-cd/Documents/_Projects/__Creative Directors Website/website 2025/react-3D/cd25_website/earthv4_UV-transformed.glb [30.93KB] (91%)
 */
 
-import React, { useRef, useMemo, useEffect, useCallback } from "react";
+import React, { useRef, useMemo, useEffect, useCallback, useState } from "react";
 import { useGLTF, useTexture, shaderMaterial, Sphere } from "@react-three/drei";
 import { useFrame, extend, useThree } from "@react-three/fiber";
 import * as THREE from "three";
@@ -21,7 +21,7 @@ import { useModelLoader, preloadModel } from "../utils/ModelLoader";
 import { ContinentMaterial } from "../materials/continentMaterial";
 
 // Determine the model URL based on the environment
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = import.meta.env.DEV;
 const localModelUrl = "src/models/earth_final-transformed.glb";
 const remoteModelUrl =
   "https://files.creative-directors.com/creative-website/creative25/glbs/earth_final-transformed.glb";
@@ -317,7 +317,8 @@ const WaterMaterial = shaderMaterial(
   (material) => {
     if (material) {
       material.transparent = true;
-      material.depthWrite = false;
+      material.depthWrite = true;  // Enable depth writing
+      material.depthTest = true;   // Ensure depth testing is enabled
       // material.side = DoubleSide;
     }
   }
@@ -415,14 +416,14 @@ function EarthModelControls() {
     continentScaleZ: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
 
     // Geometry quality controls
-    sphereSegments: { value: 128 * 4, min: 32, max: 512, step: 32, folder: "Geometry Quality" },
+    sphereSegments: { value: 64, min: 32, max: 128, step: 16, folder: "Geometry Quality" },
   }, { collapsed: true });
 
   return controls;
 }
 
 const Earth2 = forwardRef((props, ref) => {
-  const { nodes, materials } = useModelLoader(localModelUrl, remoteModelUrl);
+  const { nodes, materials, error: modelError } = useModelLoader(localModelUrl, remoteModelUrl);
 
   const materialRef = useRef();
   const waterTexture = useTexture(waterTextureUrl);
@@ -430,6 +431,22 @@ const Earth2 = forwardRef((props, ref) => {
   // Get controls from the separate, memoized components
   const shaderControls = WaterShaderControls();
   const modelControls = EarthModelControls();
+
+  // Safety checks after all hooks are called
+  if (modelError) {
+    console.error("Earth2 model loading error:", modelError);
+    return null;
+  }
+
+  if (!nodes || !waterTexture) {
+    return null;
+  }
+
+  // Check if continent geometry is available
+  if (!nodes["optimized-verts"]?.geometry) {
+    console.error("Earth2: continent geometry not found in model");
+    return null;
+  }
 
   // Memoize the texture setup to prevent it from running on every render
   const setupTexture = useCallback(() => {
@@ -442,6 +459,14 @@ const Earth2 = forwardRef((props, ref) => {
     setupTexture();
   }, [setupTexture]);
 
+  // Frame counter for reduced update frequency
+  const frameCount = useRef(0);
+
+  // Simple LOD system - adjust quality based on performance
+  const [currentLOD, setCurrentLOD] = useState(0); // 0 = high, 1 = medium, 2 = low
+  const performanceHistory = useRef([]);
+  const lodUpdateCounter = useRef(0);
+
   // Optimize the frame loop update by memoizing the callback
   const updateMaterial = useCallback((delta) => {
     if (materialRef.current) {
@@ -450,7 +475,37 @@ const Earth2 = forwardRef((props, ref) => {
   }, []);
 
   useFrame((state, delta) => {
-    updateMaterial(delta);
+    frameCount.current++;
+    lodUpdateCounter.current++;
+
+    // Monitor performance every 60 frames
+    if (lodUpdateCounter.current % 60 === 0 && delta > 0) {
+      const fps = 1 / delta;
+      if (isFinite(fps) && fps > 0) {
+        performanceHistory.current.push(fps);
+        if (performanceHistory.current.length > 10) {
+          performanceHistory.current.shift();
+        }
+
+        // Calculate average FPS with safety check
+        if (performanceHistory.current.length > 0) {
+          const avgFPS = performanceHistory.current.reduce((a, b) => a + b, 0) / performanceHistory.current.length;
+
+          // Adjust LOD based on performance
+          if (avgFPS < 30 && currentLOD < 2) {
+            setCurrentLOD(Math.min(2, currentLOD + 1));
+          } else if (avgFPS > 50 && currentLOD > 0) {
+            setCurrentLOD(Math.max(0, currentLOD - 1));
+          }
+        }
+      }
+    }
+
+    // Update water shader less frequently for better performance
+    const updateRate = currentLOD === 0 ? 2 : currentLOD === 1 ? 4 : 8;
+    if (frameCount.current % updateRate === 0) {
+      updateMaterial(delta);
+    }
   });
 
   // Cleanup on unmount
@@ -472,9 +527,20 @@ const Earth2 = forwardRef((props, ref) => {
     };
   }, [waterTexture]);
 
-  // Memoize geometry arguments to prevent re-creation on each render
-  const sphereGeometryArgs = useMemo(() => [1.023, modelControls.sphereSegments, modelControls.sphereSegments], [modelControls.sphereSegments]);
-  const innerSphereArgs = useMemo(() => [1.023, modelControls.sphereSegments, modelControls.sphereSegments], [modelControls.sphereSegments]);
+  // Memoize geometry arguments with LOD adjustment to prevent re-creation on each render
+  const sphereGeometryArgs = useMemo(() => {
+    const lodSegments = currentLOD === 0 ? modelControls.sphereSegments :
+      currentLOD === 1 ? Math.max(32, modelControls.sphereSegments / 2) :
+        32; // Low LOD always uses 32 segments
+    return [1.023, lodSegments, lodSegments];
+  }, [modelControls.sphereSegments, currentLOD]);
+
+  const innerSphereArgs = useMemo(() => {
+    const lodSegments = currentLOD === 0 ? modelControls.sphereSegments :
+      currentLOD === 1 ? Math.max(32, modelControls.sphereSegments / 2) :
+        32; // Low LOD always uses 32 segments
+    return [1.023, lodSegments, lodSegments];
+  }, [modelControls.sphereSegments, currentLOD]);
 
   return (
     <group ref={ref} {...props} dispose={null}>
@@ -482,6 +548,7 @@ const Earth2 = forwardRef((props, ref) => {
         name="ocean"
         rotation={[modelControls.oceanRotationX, modelControls.oceanRotationY, modelControls.oceanRotationZ]}
         scale={modelControls.oceanScale}
+        renderOrder={2}  // Ocean renders after continents
       >
         <sphereGeometry args={sphereGeometryArgs} />
         <waterMaterial
@@ -512,6 +579,7 @@ const Earth2 = forwardRef((props, ref) => {
         position={[0, 0, 0]}
         material={ContinentMaterial}
         scale={modelControls.innerSphereScale}
+        renderOrder={0}  // Inner sphere renders first
       />
       <mesh
         name="continent"
@@ -520,6 +588,7 @@ const Earth2 = forwardRef((props, ref) => {
         position={[modelControls.continentPositionX, modelControls.continentPositionY, modelControls.continentPositionZ]}
         rotation={[modelControls.continentRotationX, modelControls.continentRotationY, modelControls.continentRotationZ]}
         scale={[modelControls.continentScaleX, modelControls.continentScaleY, modelControls.continentScaleZ]}
+        renderOrder={1}  // Continents render after inner sphere
       />
     </group>
   );
