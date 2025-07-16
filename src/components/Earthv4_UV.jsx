@@ -10,7 +10,6 @@ import { useFrame, extend, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { Suspense } from "react";
 import { forwardRef, useImperativeHandle } from "react";
-import { useControls } from "leva";
 import {
   Color,
   RepeatWrapping,
@@ -329,143 +328,46 @@ extend({ WaterMaterial });
 // This component isolates the Leva controls, preventing the main component
 // from re-rendering every time a control is changed.
 function WaterShaderControls() {
-  // Only show controls in development
-  const isDevelopment = import.meta.env.DEV;
-  if (!isDevelopment) {
-    return {
-      noiseFrequency: 4.5,
-      noiseAmplitude: 0.012,
-      noiseSpeed: 0.30,
-      waterColor: "#1e90ff",
-      waterOpacity: 1,
-      roughness: 0.34,
-      metalness: 0.2,
-      useTextureFlag: true,
-      textureBrightness: 0.8,
-      textureRepeat: 1.0,
-      causticsFrequency: 10.0,
-      causticsSpeed: 0.44,
-      causticsIntensity: 0.25,
-      causticsSharpness: 0.02,
-      causticsEdgeThickness: 0.00,
-      causticsDistortionFrequency: 18.5,
-      causticsDistortionAmplitude: 0.17,
-    };
-  }
-
-  const controls = useControls("Water Shader", {
-    noiseFrequency: { value: 4.5, min: 0.1, max: 20, step: 0.1 },
-    noiseAmplitude: { value: 0.012, min: 0.001, max: 0.100, step: 0.001 },
-    noiseSpeed: { value: 0.30, min: 0.0, max: 2, step: 0.01 },
-    waterColor: { value: "#1e90ff", label: "Water Color" }, // Color picker
-    waterOpacity: { value: 1, min: 0, max: 1, step: 0.01 },
-    roughness: { value: 0.34, min: 0, max: 1, step: 0.01 },
-    metalness: { value: 0.2, min: 0, max: 1, step: 0.01 },
-    useTextureFlag: { value: true, label: "Use Water Texture" },
-    textureBrightness: { value: 0.8, min: 0, max: 1, step: 0.01, label: "Brightness" },
-    textureRepeat: { value: WATER_TEXTURE_REPEAT_MULTIPLIER, min: 0.1, max: 20, step: 0.1, label: "Texture Repeat" },
-    causticsFrequency: {
-      value: 10.0,
-      min: 1,
-      max: 50,
-      step: 0.1,
-      folder: "Caustics",
-    },
-    causticsSpeed: {
-      value: 0.44,
-      min: 0.0,
-      max: 1.0,
-      step: 0.01,
-      folder: "Caustics",
-    },
-    causticsIntensity: {
-      value: 0.25,
-      min: 0,
-      max: 2,
-      step: 0.01,
-      folder: "Caustics",
-    },
-    causticsSharpness: {
-      value: 0.02,
-      min: 0.01,
-      max: 10,
-      step: 0.01,
-      folder: "Caustics",
-    },
-    causticsEdgeThickness: {
-      value: 0.00,
-      min: 0.001,
-      max: 0.5,
-      step: 0.001,
-      folder: "Caustics",
-    },
-    causticsDistortionFrequency: {
-      value: 18.5,
-      min: 0.1,
-      max: 50,
-      step: 0.1,
-      folder: "Caustics",
-    },
-    causticsDistortionAmplitude: {
-      value: 0.17,
-      min: 0.0,
-      max: 0.5,
-      step: 0.001,
-      folder: "Caustics",
-    },
-  }, { collapsed: true });
-
-  return controls;
+  return {
+    noiseFrequency: 4.5,
+    noiseAmplitude: 0.012,
+    noiseSpeed: 0.3,
+    waterColor: "#1e90ff",
+    waterOpacity: 1,
+    roughness: 0.34,
+    metalness: 0.2,
+    useTextureFlag: true,
+    textureBrightness: 0.8,
+    textureRepeat: WATER_TEXTURE_REPEAT_MULTIPLIER,
+    causticsFrequency: 10.0,
+    causticsSpeed: 0.44,
+    causticsIntensity: 0.25,
+    causticsSharpness: 0.02,
+    causticsEdgeThickness: 0.002,
+    causticsDistortionFrequency: 18.5,
+    causticsDistortionAmplitude: 0.17,
+  };
 }
 
 // Earth model controls
 function EarthModelControls() {
-  // Only show controls in development
-  const isDevelopment = import.meta.env.DEV;
-  if (!isDevelopment) {
-    return {
-      oceanRotationX: -0.8,
-      oceanRotationY: 0.5,
-      oceanRotationZ: -0.5,
-      oceanScale: 1.82,
-      innerSphereScale: 1.7,
-      continentPositionX: 0.01,
-      continentPositionY: 0.00,
-      continentPositionZ: 0,
-      continentRotationX: -Math.PI / 2,
-      continentRotationY: 0,
-      continentRotationZ: -0.1,
-      continentScaleX: 1.2,
-      continentScaleY: 1.2,
-      continentScaleZ: 1.2,
-      sphereSegments: 64,
-    };
-  }
-
-  const controls = useControls("Earth Model", {
-    // Ocean mesh controls
-    oceanRotationX: { value: -0.8, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
-    oceanRotationY: { value: 0.5, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
-    oceanRotationZ: { value: -0.5, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
-    oceanScale: { value: 1.82, min: 0.1, max: 5, step: 0.01, folder: "Ocean" },
-    // Inner sphere controls
-    innerSphereScale: { value: 1.7, min: 0.1, max: 5, step: 0.01, folder: "Inner Sphere" },
-    // Continent mesh controls
-    continentPositionX: { value: 0.01, min: -2, max: 2, step: 0.001, folder: "Continent" },
-    continentPositionY: { value: 0.00, min: -2, max: 2, step: 0.001, folder: "Continent" },
-    continentPositionZ: { value: 0, min: -2, max: 2, step: 0.001, folder: "Continent" },
-    continentRotationX: { value: -Math.PI / 2, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Continent" },
-    continentRotationY: { value: 0, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Continent" },
-    continentRotationZ: { value: -0.1, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Continent" },
-    continentScaleX: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
-    continentScaleY: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
-    continentScaleZ: { value: 1.2, min: 0.1, max: 3, step: 0.001, folder: "Continent" },
-
-    // Geometry quality controls
-    sphereSegments: { value: 64, min: 32, max: 128, step: 16, folder: "Geometry Quality" },
-  }, { collapsed: true });
-
-  return controls;
+  return {
+    oceanRotationX: -0.8,
+    oceanRotationY: 0.5,
+    oceanRotationZ: -0.5,
+    oceanScale: 1.82,
+    innerSphereScale: 1.7,
+    continentPositionX: 0.01,
+    continentPositionY: 0.0,
+    continentPositionZ: 0,
+    continentRotationX: -Math.PI / 2,
+    continentRotationY: 0,
+    continentRotationZ: -0.1,
+    continentScaleX: 1.2,
+    continentScaleY: 1.2,
+    continentScaleZ: 1.2,
+    sphereSegments: 64,
+  };
 }
 
 const Earth2 = forwardRef((props, ref) => {

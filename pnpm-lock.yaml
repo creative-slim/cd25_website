@@ -2129,8 +2129,8 @@ packages:
   urijs@1.19.11:
     resolution: {integrity: sha512-HXgFDgDommxn5/bIv0cnQZsPhHDA90NPHD6+c/v21U5+Sx5hoP8+dP9IZXBU1gIfvdRfhG8cel9QNPeionfcCQ==}
 
-  use-isomorphic-layout-effect@1.2.0:
-    resolution: {integrity: sha512-q6ayo8DWoPZT0VdG4u3D3uxcgONP3Mevx2i2b0434cwWBoL+aelL1DzkXI6w3PhTZzUeR2kaVlZn70iCiseP6w==}
+  use-isomorphic-layout-effect@1.2.1:
+    resolution: {integrity: sha512-tpZZ+EX0gaghDAiFR37hj5MgY6ZN55kLiPkJsKxBMZ6GZdOSPJXiOzPM984oPYZ5AnehYx5WQp1+ME8I/P/pRA==}
     peerDependencies:
       '@types/react': '*'
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -2533,7 +2533,7 @@ snapshots:
       '@floating-ui/dom': 0.5.4
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
-      use-isomorphic-layout-effect: 1.2.0(@types/react@18.3.21)(react@19.1.0)
+      use-isomorphic-layout-effect: 1.2.1(@types/react@18.3.21)(react@19.1.0)
     transitivePeerDependencies:
       - '@types/react'
 
@@ -4613,7 +4613,7 @@ snapshots:
 
   urijs@1.19.11: {}
 
-  use-isomorphic-layout-effect@1.2.0(@types/react@18.3.21)(react@19.1.0):
+  use-isomorphic-layout-effect@1.2.1(@types/react@18.3.21)(react@19.1.0):
     dependencies:
       react: 19.1.0
     optionalDependencies:

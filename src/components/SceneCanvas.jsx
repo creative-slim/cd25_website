@@ -24,7 +24,7 @@ import { Rotator } from "./Carosel";
 import Env from "./Env";
 import EnergyParticles from "./EnergyParticles";
 import RingParticles from "./RingParticles";
-import FloatingBGImages from "./FloatingBGImages";
+// import FloatingBGImages from "./FloatingBGImages";
 const Header_v1 = lazy(() => import("./CD_header_v1_untransformed"));
 const Kreaton = lazy(() => import("./Kreaton_A"));
 const Earth2 = lazy(() => import("./Earthv4_UV"));

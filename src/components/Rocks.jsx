@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { useRef, useImperativeHandle, forwardRef, useEffect, useState, Fragment, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { useControls, folder } from "leva";
 import { gsap } from "gsap";
 import Portal from "./Portal";
 import SaturnRing from "./SaturnRing";
@@ -27,8 +26,8 @@ const GOOD_MODE_TRANSITION_TIME = 2.0; // seconds
 const SATURN_TILT = 0.5;
 
 // Jerk intensity (now controlled by Leva)
-let JERK_MAG = 0.18;
-let JERK_ROT = 0.5;
+const JERK_MAG = 0.18;
+const JERK_ROT = 0.5;
 
 const dodecahedronGeometry = new THREE.DodecahedronGeometry(ROCK_SIZE, 0);
 const sphereGeometry = new THREE.SphereGeometry(ROCK_SIZE, 16, 16);
@@ -235,111 +234,12 @@ const Rocks = forwardRef(({ shieldRadius = SHIELD_RADIUS, shieldColor = SHIELD_C
         });
     };
 
-    // Leva controls for jerk intensity - only in development
-    const isDevelopment = import.meta.env.DEV;
-    let leva = null;
-    if (isDevelopment) {
-        leva = useControls("Rocks Jerk", {
-            "Jerk Magnitude": {
-                value: JERK_MAG,
-                min: 0,
-                max: 0.5,
-                step: 0.01,
-                onChange: (v) => (JERK_MAG = v),
-            },
-            "Jerk Rotation": {
-                value: JERK_ROT,
-                min: 0,
-                max: 2,
-                step: 0.01,
-                onChange: (v) => (JERK_ROT = v),
-            },
-        });
-    }
-
     // Leva controls for inner glow - only in development
     const [glowParams, setGlowParams] = useState({
         size: 0.7,
         intensity: 1.5,
         opacity: 0.7,
     });
-    if (isDevelopment) {
-        useControls("Rocks Glow", {
-            "Glow Size": {
-                value: 0.7,
-                min: 0.3,
-                max: 1.0,
-                step: 0.01,
-                onChange: (v) => setGlowParams((p) => ({ ...p, size: v })),
-            },
-            "Glow Intensity": {
-                value: 1.5,
-                min: 0.1,
-                max: 5.0,
-                step: 0.05,
-                onChange: (v) => setGlowParams((p) => ({ ...p, intensity: v })),
-            },
-            "Glow Opacity": {
-                value: 0.7,
-                min: 0.1,
-                max: 1.0,
-                step: 0.01,
-                onChange: (v) => setGlowParams((p) => ({ ...p, opacity: v })),
-            },
-        });
-    }
-
-    // Emissive mode state
-    const [emissiveMode, setEmissiveMode] = useState(false);
-    if (isDevelopment) {
-        useControls("Rocks Mode", {
-            "Peaceful Mode": {
-                value: false,
-                onChange: (v) => {
-                    if (v) {
-                        calmTheStorm();
-                    } else {
-                        unleashTheStorm();
-                    }
-                },
-            },
-            "Emissive Mode": {
-                value: false,
-                onChange: (v) => setEmissiveMode(v),
-            },
-        });
-    }
-
-    if (isDevelopment) {
-        useControls({
-            "Shield": folder({
-                roughness: {
-                    value: SHIELD_ROUGHNESS,
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    onChange: (v) => {
-                        if (shieldRef.current) {
-                            shieldRef.current.material.roughness = v;
-                        }
-                    },
-                    label: "Roughness"
-                },
-                metalness: {
-                    value: SHIELD_METALNESS,
-                    min: 0,
-                    max: 1,
-                    step: 0.01,
-                    onChange: (v) => {
-                        if (shieldRef.current) {
-                            shieldRef.current.material.metalness = v;
-                        }
-                    },
-                    label: "Metalness"
-                },
-            })
-        });
-    }
 
     // Per-rock state
     const [progress, setProgress] = useState(Array(NUM_ROCKS).fill(0)); // Keep for UI updates only
