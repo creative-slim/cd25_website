@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useThree } from "@react-three/fiber";
-import * as THREE from "three";
+import { Vector3, PerspectiveCamera } from "three";
 import { useGSAP } from "@gsap/react"; // Import useGSAP
 
 /// <reference types="vite/client" />
@@ -120,18 +120,18 @@ export function AnimationManager({
   ringParticlesRef,
 }: AnimationManagerProps) {
   const { camera } = useThree(); // camera is always PerspectiveCamera in this app
-  const mainTimelineRef = useRef<any>(null);
+  const mainTimelineRef = useRef(null);
   const [modelReady, setModelReady] = useState(false);
-  const earthRotationRef = useRef<any>(null);
+  const earthRotationRef = useRef(null);
   const [isEarthRotating, setIsEarthRotating] = useState(false);
   const logRef = useRef((type: string, msg: string, ...args: any[]) => {
     if (type === "error") console.error(msg, ...args);
     else if (DEBUG_LOGS) console.log(msg, ...args);
   });
-  const cameraTargetRef = useRef(new THREE.Vector3(0, 1, 0));
+  const cameraTargetRef = useRef(new Vector3(0, 1, 0));
   const hasPushedRef = useRef(false);
-  const explosionTimeoutRef = useRef<any>(null);
-  const pointCycleTimeoutRef = useRef<any>(null);
+  const explosionTimeoutRef = useRef(null);
+  const pointCycleTimeoutRef = useRef(null);
   const initializedRef = useRef(false);
   const initialAnimationPlayedRef = useRef(false);
 
@@ -238,7 +238,7 @@ export function AnimationManager({
 
   // Refactored camera target function using LERP
   const setCameraTarget = useCallback(
-    (targetPosition: THREE.Vector3 | { x: number; y: number; z: number }, options: AnimationOptions = {}) => {
+    (targetPosition: Vector3 | { x: number; y: number; z: number }, options: AnimationOptions = {}) => {
       const {
         duration = 1,
         ease = "power2.inOut",
@@ -297,7 +297,7 @@ export function AnimationManager({
 
   // New function to consistently handle camera position animations
   const setCameraPosition = useCallback(
-    (position: THREE.Vector3 | { x: number; y: number; z: number }, options: AnimationOptions = {}) => {
+    (position: Vector3 | { x: number; y: number; z: number }, options: AnimationOptions = {}) => {
       const {
         duration = 1,
         ease = "power2.inOut",
@@ -358,7 +358,7 @@ export function AnimationManager({
 
       logRef.current(
         "system",
-        `Setting camera FOV from ${(camera as unknown as THREE.PerspectiveCamera).fov.toFixed(
+        `Setting camera FOV from ${(camera as unknown as PerspectiveCamera).fov.toFixed(
           1
         )} to ${fov} using GSAP tween`
       );
@@ -373,15 +373,15 @@ export function AnimationManager({
         },
         onUpdate: () => {
           // IMPORTANT: Update projection matrix on each frame of the tween
-          (camera as unknown as THREE.PerspectiveCamera).updateProjectionMatrix();
+          (camera as unknown as PerspectiveCamera).updateProjectionMatrix();
         },
         onComplete: () => {
           // Ensure final FOV is set and matrix updated
-          (camera as unknown as THREE.PerspectiveCamera).updateProjectionMatrix();
+          (camera as unknown as PerspectiveCamera).updateProjectionMatrix();
           if (onComplete) onComplete();
           logRef.current(
             "system",
-            `Camera FOV animation complete: ${(camera as unknown as THREE.PerspectiveCamera).fov.toFixed(1)}`
+            `Camera FOV animation complete: ${(camera as unknown as PerspectiveCamera).fov.toFixed(1)}`
           );
         },
       });
@@ -1109,14 +1109,93 @@ export function AnimationManager({
       });
 
       /*
-      Section 6 - kreaton side and point
-      */
+Section 6 - 
+*/
       createSectionTimeline("section-6", {
-        onEnter: () => {
-          console.log(" --------section 6 onEnter");
+        onEnter: () => { },
+        onLeaveBack: () => {
+          console.log(" --------section 6 onLeaveBack");
           logRef.current(
             "scrollTrigger",
-            "Entering Section 6 - POINT/IDLE Cycle"
+            "Leaving Section 7 Backwards (Re-entering Section 6)"
+          );
+          // setCameraPosition(
+          //   { x: 1.5, y: 1.5, z: 5.5 },
+          //   { duration: 1, ease: "power2.inOut" }
+          // );
+          // setCameraTarget(
+          //   { x: -1.5, y: 1.5, z: 0 },
+          //   { duration: 1, ease: "power2.inOut" }
+          // );
+          // stopEarthRotation();
+        },
+      });
+
+      const startPointCycle = () => {
+        if (kreatonRef.current) {
+          const currentAnimations = kreatonRef.current.getAnimationNames();
+          logRef.current("model", "Available animations:", currentAnimations);
+
+          if (pointCycleTimeoutRef.current) {
+            clearTimeout(pointCycleTimeoutRef.current);
+            pointCycleTimeoutRef.current = null;
+          }
+
+          const playPointCycle = () => {
+            if (!kreatonRef.current) return;
+            logRef.current("model", "Starting POINT animation in cycle");
+            kreatonRef.current.transitionFromCurrentToAnimation("POINT", {
+              crossFadeTime: 0.5,
+              fadeInDuration: 0.5,
+              loopOnce: true,
+              onComplete: () => {
+                if (!kreatonRef.current) return;
+                logRef.current(
+                  "model",
+                  "POINT completed, switching to IDLE for 5s"
+                );
+                kreatonRef.current.playAnimation("POINT");
+                kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
+                  crossFadeTime: 0.5,
+                  fadeInDuration: 0.5,
+                });
+                if (pointCycleTimeoutRef.current) {
+                  clearTimeout(pointCycleTimeoutRef.current);
+                }
+                pointCycleTimeoutRef.current = setTimeout(() => {
+                  logRef.current(
+                    "model",
+                    "IDLE timeout finished, restarting POINT cycle"
+                  );
+                  playPointCycle();
+                }, 5000);
+              },
+            });
+          };
+
+          if (
+            currentAnimations.includes("POINT") &&
+            currentAnimations.includes("IDLE")
+          ) {
+            playPointCycle();
+          } else {
+            logRef.current(
+              "error",
+              "POINT or IDLE animation not found, cannot start cycle. Playing IDLE."
+            );
+            kreatonTransitionFromCurrentToAnimation("IDLE");
+          }
+        }
+      };
+      /*
+      Section 7 - Final Reset kreaton side and point
+      */
+      createSectionTimeline("section-7", {
+        onEnter: () => {
+          console.log(" --------section 7 onEnter");
+          logRef.current(
+            "scrollTrigger",
+            "Entering Section 7 - POINT/IDLE Cycle"
           );
           setCameraPosition(
             { x: 1.5, y: 1.5, z: 5.5 },
@@ -1128,77 +1207,36 @@ export function AnimationManager({
           );
           stopEarthRotation();
 
-          if (kreatonRef.current) {
-            const currentAnimations = kreatonRef.current.getAnimationNames();
-            logRef.current("model", "Available animations:", currentAnimations);
-
-            if (pointCycleTimeoutRef.current) {
-              clearTimeout(pointCycleTimeoutRef.current);
-              pointCycleTimeoutRef.current = null;
-            }
-
-            const playPointCycle = () => {
-              if (!kreatonRef.current) return;
-              logRef.current("model", "Starting POINT animation in cycle");
-              kreatonRef.current.transitionFromCurrentToAnimation("POINT", {
-                crossFadeTime: 0.5,
-                fadeInDuration: 0.5,
-                loopOnce: true,
-                onComplete: () => {
-                  if (!kreatonRef.current) return;
-                  logRef.current(
-                    "model",
-                    "POINT completed, switching to IDLE for 5s"
-                  );
-                  kreatonRef.current.playAnimation("POINT");
-                  kreatonRef.current.transitionFromCurrentToAnimation("IDLE", {
-                    crossFadeTime: 0.5,
-                    fadeInDuration: 0.5,
-                  });
-                  if (pointCycleTimeoutRef.current) {
-                    clearTimeout(pointCycleTimeoutRef.current);
-                  }
-                  pointCycleTimeoutRef.current = setTimeout(() => {
-                    logRef.current(
-                      "model",
-                      "IDLE timeout finished, restarting POINT cycle"
-                    );
-                    playPointCycle();
-                  }, 5000);
-                },
-              });
-            };
-
-            if (
-              currentAnimations.includes("POINT") &&
-              currentAnimations.includes("IDLE")
-            ) {
-              playPointCycle();
-            } else {
-              logRef.current(
-                "error",
-                "POINT or IDLE animation not found, cannot start cycle. Playing IDLE."
-              );
-              kreatonTransitionFromCurrentToAnimation("IDLE");
-            }
+          if (cdTextRef?.current) {
+            cdTextRef.current.resetAnimation();
+            cdTextRef.current.moveUp();
+            cdTextRef.current.show();
           }
+
+          startPointCycle();
         },
         onLeave: () => {
-          console.log(" --------section 6 onLeave");
-          logRef.current("scrollTrigger", "Leaving Section 6");
+          console.log(" --------section 7 onLeave");
+          logRef.current("scrollTrigger", "Leaving Section 7");
           if (pointCycleTimeoutRef.current) {
             clearTimeout(pointCycleTimeoutRef.current);
             pointCycleTimeoutRef.current = null;
             logRef.current("model", "Cleared POINT/IDLE cycle timeout");
+          }
+          if (cdTextRef?.current) {
+            cdTextRef.current.hide();
           }
         },
         onLeaveBack: () => {
-          console.log(" --------section 6 onLeaveBack");
-          logRef.current("scrollTrigger", "Leaving Section 6 Backwards");
+          console.log(" --------section 7 onLeaveBack");
+          logRef.current("scrollTrigger", "Leaving Section 7 Backwards");
           if (pointCycleTimeoutRef.current) {
             clearTimeout(pointCycleTimeoutRef.current);
             pointCycleTimeoutRef.current = null;
             logRef.current("model", "Cleared POINT/IDLE cycle timeout");
+          }
+          if (cdTextRef?.current) {
+            cdTextRef.current.hide();
           }
           if (kreatonRef.current) {
             kreatonTransitionFromCurrentToAnimation("IDLE");
@@ -1214,33 +1252,18 @@ export function AnimationManager({
           rotatorX(20);
         },
         onEnterBack: () => {
-          console.log(" --------section 6 onEnterBack");
-          logRef.current("scrollTrigger", "Re-entering Section 6");
+          console.log(" --------section 7 onEnterBack");
+          logRef.current("scrollTrigger", "Re-entering Section 7");
+          if (cdTextRef?.current) {
+            cdTextRef.current.resetAnimation();
+            cdTextRef.current.moveUp();
+            cdTextRef.current.show();
+          }
+          startPointCycle();
         },
       });
 
-      /*
-      Section 7 - Final Reset
-      */
-      createSectionTimeline("section-7", {
-        onEnter: () => { },
-        onLeaveBack: () => {
-          console.log(" --------section 7 onLeaveBack");
-          logRef.current(
-            "scrollTrigger",
-            "Leaving Section 7 Backwards (Re-entering Section 6)"
-          );
-          setCameraPosition(
-            { x: 1.5, y: 1.5, z: 5.5 },
-            { duration: 1, ease: "power2.inOut" }
-          );
-          setCameraTarget(
-            { x: -1.5, y: 1.5, z: 0 },
-            { duration: 1, ease: "power2.inOut" }
-          );
-          stopEarthRotation();
-        },
-      });
+
 
       // Comprehensive cleanup logic for GSAP, ScrollTrigger, and timeouts
       return () => {

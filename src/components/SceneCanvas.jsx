@@ -36,10 +36,39 @@ const Rocks = lazy(() => import("./Rocks"));
 // import ShootingStars from "./unused/ShootingStars";
 // import { PhysicsDemo } from "./unused/PhysicsDemo";
 
-const isDevelopment = import.meta.env.DEV;
+const isDevelopment = false && import.meta.env.DEV;
+
 
 // Separate component for Leva controls to prevent re-renders
 function PostProcessingControls() {
+  // Only show controls in development
+  if (!isDevelopment) {
+    return {
+      bloomEnabled: true,
+      bloomIntensity: 0.4,
+      bloomLuminanceThreshold: 1,
+      bloomLuminanceSmoothing: 0.04,
+      dofEnabled: false,
+      mipmapBlur: true,
+      dofFocusDistance: 0,
+      dofFocalLength: 0.024,
+      dofBokehScale: 2,
+      noiseEnabled: false,
+      noiseOpacity: 0.02,
+      vignetteEnabled: false,
+      vignetteEskil: false,
+      vignetteOffset: 0.5,
+      vignetteDarkness: 0.5,
+      chromaticEnabled: false,
+      chromaticOffset: 0.003,
+      glitchEnabled: false,
+      glitchMode: "constant",
+      glitchStrength: 0.3,
+      pixelationEnabled: false,
+      pixelationGranularity: 1,
+    };
+  }
+
   const controls = useControls({
     "Post Processing": folder(
       {
@@ -178,6 +207,30 @@ function PostProcessingControls() {
 
 // Separate component for lighting controls
 function LightingControls() {
+  // Only show controls in development
+  if (!isDevelopment) {
+    return {
+      ambientLightEnabled: true,
+      ambientLightIntensity: 1,
+      ambientLightColor: "#ffffff",
+      spotLightEnabled: true,
+      spotLightIntensity: 500,
+      spotLightColor: "#ffffff",
+      spotLightPosition: { x: 10, y: 10, z: 5 },
+      spotLightScale: 1,
+      spotLightAngle: 0.3,
+      spotLightPenumbra: 0,
+      spotLightDistance: 0,
+      spotLightDecay: 2,
+      pointLightEnabled: true,
+      pointLightIntensity: 5,
+      pointLightColor: "#ffffff",
+      pointLightPosition: { x: -10, y: -10, z: -10 },
+      pointLightDistance: 0,
+      pointLightDecay: 2,
+    };
+  }
+
   const controls = useControls({
     "Lighting": folder(
       {
@@ -382,22 +435,24 @@ export function SceneCanvas({ scrollContainerRef }) {
   // Get lighting controls from separate component
   const lightingControls = LightingControls();
 
-  // Leva control for rocks active state
-  useControls({
-    "Rocks: Fall to Shield": {
-      value: false,
-      onChange: (v) => {
-        if (rocksRef.current && rocksRef.current.setActive) {
-          rocksRef.current.setActive(v);
-        }
+  // Leva control for rocks active state - only in development
+  if (isDevelopment) {
+    useControls({
+      "Rocks: Fall to Shield": {
+        value: false,
+        onChange: (v) => {
+          if (rocksRef.current && rocksRef.current.setActive) {
+            rocksRef.current.setActive(v);
+          }
+        },
+        label: "Rocks: Fall to Shield",
       },
-      label: "Rocks: Fall to Shield",
-    },
-  });
+    });
+  }
 
   return (
     <>
-      {isDevelopment && <Leva collapsed={true} />}
+      {/* {isDevelopment && <Leva collapsed={true} />} */}
       <Canvas
         gl={{
           alpha: true,
@@ -489,7 +544,7 @@ export function SceneCanvas({ scrollContainerRef }) {
 
         <group name="commented-out">
           {/* <Suspense fallback={null}> */}
-          <Perf position="top-left" />
+          {/* <Perf position="top-left" /> */}
           {/* <Selection> */}
           {/* <Select enabled={true}> */}
           {/* <OrbitControls /> */}

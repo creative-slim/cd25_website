@@ -329,6 +329,30 @@ extend({ WaterMaterial });
 // This component isolates the Leva controls, preventing the main component
 // from re-rendering every time a control is changed.
 function WaterShaderControls() {
+  // Only show controls in development
+  const isDevelopment = import.meta.env.DEV;
+  if (!isDevelopment) {
+    return {
+      noiseFrequency: 4.5,
+      noiseAmplitude: 0.012,
+      noiseSpeed: 0.30,
+      waterColor: "#1e90ff",
+      waterOpacity: 1,
+      roughness: 0.34,
+      metalness: 0.2,
+      useTextureFlag: true,
+      textureBrightness: 0.8,
+      textureRepeat: 1.0,
+      causticsFrequency: 10.0,
+      causticsSpeed: 0.44,
+      causticsIntensity: 0.25,
+      causticsSharpness: 0.02,
+      causticsEdgeThickness: 0.00,
+      causticsDistortionFrequency: 18.5,
+      causticsDistortionAmplitude: 0.17,
+    };
+  }
+
   const controls = useControls("Water Shader", {
     noiseFrequency: { value: 4.5, min: 0.1, max: 20, step: 0.1 },
     noiseAmplitude: { value: 0.012, min: 0.001, max: 0.100, step: 0.001 },
@@ -396,6 +420,28 @@ function WaterShaderControls() {
 
 // Earth model controls
 function EarthModelControls() {
+  // Only show controls in development
+  const isDevelopment = import.meta.env.DEV;
+  if (!isDevelopment) {
+    return {
+      oceanRotationX: -0.8,
+      oceanRotationY: 0.5,
+      oceanRotationZ: -0.5,
+      oceanScale: 1.82,
+      innerSphereScale: 1.7,
+      continentPositionX: 0.01,
+      continentPositionY: 0.00,
+      continentPositionZ: 0,
+      continentRotationX: -Math.PI / 2,
+      continentRotationY: 0,
+      continentRotationZ: -0.1,
+      continentScaleX: 1.2,
+      continentScaleY: 1.2,
+      continentScaleZ: 1.2,
+      sphereSegments: 64,
+    };
+  }
+
   const controls = useControls("Earth Model", {
     // Ocean mesh controls
     oceanRotationX: { value: -0.8, min: -Math.PI, max: Math.PI, step: 0.01, folder: "Ocean" },
