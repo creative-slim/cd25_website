@@ -569,7 +569,7 @@ export function SceneCanvas({ scrollContainerRef }) {
 
       </Canvas>
       <Loader
-        dataInterpolation={(p) => alert("----------- Loader progress: " + p.toFixed(2))} // Text 
+        dataInterpolation={(p) => console.log("----------- Loader progress: " + p.toFixed(2))} // Text 
       />
       {/* TEMP: Test button to trigger ring explosion */}
       {isDevelopment && (
