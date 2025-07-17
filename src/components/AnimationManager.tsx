@@ -781,7 +781,8 @@ export function AnimationManager({
           rotatorRef.current.setVisibility(false);
           rotatorRef.current.setObserverActive(false); // Disable observer when leaving section
 
-          rotatorX(20);
+          // rotatorX(20);
+
 
           setFOV(DEFAULT_FOV);
           rotatorCameraSetup(true);
@@ -965,9 +966,9 @@ export function AnimationManager({
                 logRef.current("animation", "Reverting dramatic camera effect - moving back and restoring default FOV");
                 setCameraPosition(
                   { x: 0, y: 1.5, z: 10 },
-                  { duration: 1.5, ease: "power2.inOut" }
+                  { duration: .5, ease: "ease3.out" }
                 );
-                setFOV(DEFAULT_FOV, { duration: 1.5, ease: "power2.inOut" });
+                setFOV(DEFAULT_FOV, { duration: .5, ease: "ease3.out" });
 
                 // Transition to IDLE after explosion
                 if (currentAnimations.includes("IDLE")) {

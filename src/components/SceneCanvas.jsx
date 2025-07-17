@@ -456,12 +456,12 @@ export function SceneCanvas({ scrollContainerRef }) {
       <Canvas
         gl={{
           alpha: true,
-          antialias: false, // Disable antialiasing for better performance
+          antialias: true, // Disable antialiasing for better performance
           powerPreference: "high-performance", // Prefer dedicated GPU
           stencil: false, // Disable stencil buffer if not needed
           depth: true,
         }}
-        performance={{ min: 0.5, max: 60 }} // Cap at 60 FPS
+        // performance={{ min: 0.5, max: 60 }} // Cap at 60 FPS
         dpr={1}
         // dpr={Math.min(window.devicePixelRatio, 2)} // Cap DPR for performance
         camera={{
@@ -471,7 +471,7 @@ export function SceneCanvas({ scrollContainerRef }) {
           position: [0, 0.5, 4],
         }}
       >
-        <AdaptiveEvents />
+        {/* <AdaptiveEvents /> */}
 
         <Suspense name="Environment" fallback={null}>
           <Env />
